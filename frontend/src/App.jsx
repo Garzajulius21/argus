@@ -36,6 +36,7 @@ export default function App() {
 
     const controller = new AbortController();
     abortRef.current = controller;
+    let currentResults = [];
 
     try {
       const response = await fetch('/api/enrich', {
@@ -84,12 +85,13 @@ export default function App() {
               break;
 
             case 'result':
-              setResults(prev => [...prev, {
+              currentResults = [...currentResults, {
                 ioc: event.ioc,
                 enrichment: event.enrichment,
                 verdict: event.verdict,
                 enrichedAt: event.enrichedAt
-              }]);
+              }];
+              setResults(currentResults);
               setProgress(prev => ({
                 ...prev,
                 processed: Math.max(prev.processed, event.ioc ? prev.processed + 1 : prev.processed)
@@ -104,11 +106,7 @@ export default function App() {
             case 'done':
               setReportStreaming(false);
               setLoading(false);
-              setResults(prev => {
-                const updated = saveToHistory(parsedIocs, prev);
-                setHistory(updated);
-                return prev;
-              });
+              setHistory(saveToHistory(parsedIocs, currentResults));
               break;
 
             case 'error':
