@@ -22,8 +22,9 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 3. **Parallel enrichment** — VirusTotal (rate-limited to 4/min automatically), MalwareBazaar, and AbuseIPDB all queried simultaneously.
 4. **Live results table** — rows populate as each API responds, no waiting for everything to finish.
 5. **Verdicts** — each IOC gets CLEAN, SUSPICIOUS, or MALICIOUS based on combined signal from all three sources.
-6. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes (requires Anthropic API key).
-7. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
+6. **Search history** — last 15 searches stored automatically in the browser. Each entry shows verdict summary and IOC preview. Click any entry to reload instantly.
+7. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes (requires Anthropic API key).
+8. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
 
 ---
 
@@ -108,7 +109,7 @@ argus/
 │   └── tests/        ← Jest test suite
 ├── frontend/
 │   └── src/
-│       ├── components/   ← IOCInput, EnrichmentTable, VerdictBadge, AnalystReport
+│       ├── components/   ← IOCInput, EnrichmentTable, VerdictBadge, AnalystReport, SearchHistory
 │       └── lib/          ← IOC parser mirror, defang utility
 ├── SPEC.md               ← Full technical specification and architecture
 └── start-argus.command   ← One-click startup script
