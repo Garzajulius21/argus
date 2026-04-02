@@ -4,6 +4,7 @@ import EnrichmentTable from './components/EnrichmentTable.jsx';
 import AnalystReport from './components/AnalystReport.jsx';
 import ProgressBar from './components/ProgressBar.jsx';
 import ExportButton from './components/ExportButton.jsx';
+import SearchHistory, { loadHistory, saveToHistory } from './components/SearchHistory.jsx';
 
 export default function App() {
   const [loading, setLoading] = useState(false);
@@ -12,7 +13,13 @@ export default function App() {
   const [reportText, setReportText] = useState('');
   const [reportStreaming, setReportStreaming] = useState(false);
   const [error, setError] = useState(null);
+  const [history, setHistory] = useState(() => loadHistory());
+  const [inputValue, setInputValue] = useState('');
   const abortRef = useRef(null);
+
+  const handleReloadSearch = useCallback((iocValues) => {
+    setInputValue(iocValues.join('\n'));
+  }, []);
 
   const handleAnalyze = useCallback(async (parsedIocs) => {
     // Cancel any in-flight request
@@ -97,6 +104,11 @@ export default function App() {
             case 'done':
               setReportStreaming(false);
               setLoading(false);
+              setResults(prev => {
+                const updated = saveToHistory(parsedIocs, prev);
+                setHistory(updated);
+                return prev;
+              });
               break;
 
             case 'error':
@@ -204,7 +216,7 @@ export default function App() {
           flexDirection: 'column',
           gap: '16px'
         }}>
-          <IOCInput onAnalyze={handleAnalyze} loading={loading} />
+          <IOCInput onAnalyze={handleAnalyze} loading={loading} injectedValue={inputValue} onInjectedValueConsumed={() => setInputValue('')} />
 
           {/* Progress indicator */}
           {(loading || progress.total > 0) && (
@@ -227,6 +239,11 @@ export default function App() {
             }}>
               <strong>Error:</strong> {error}
             </div>
+          )}
+
+          {/* Search History */}
+          {!loading && (
+            <SearchHistory history={history} onReload={handleReloadSearch} />
           )}
 
           {/* Tips */}

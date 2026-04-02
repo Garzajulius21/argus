@@ -1,11 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { parseIOCs, MAX_IOCS } from '../lib/iocParser.js';
 import IOCTypeChip from './IOCTypeChip.jsx';
 import { defang } from '../lib/defang.js';
 
-export default function IOCInput({ onAnalyze, loading }) {
+export default function IOCInput({ onAnalyze, loading, injectedValue, onInjectedValueConsumed }) {
   const [text, setText] = useState('');
   const [parsedIocs, setParsedIocs] = useState([]);
+
+  useEffect(() => {
+    if (injectedValue) {
+      setText(injectedValue);
+      setParsedIocs(parseIOCs(injectedValue));
+      onInjectedValueConsumed?.();
+    }
+  }, [injectedValue, onInjectedValueConsumed]);
 
   const handleChange = useCallback((e) => {
     const val = e.target.value;
