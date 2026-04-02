@@ -110,8 +110,8 @@ argus/
 │   └── src/
 │       ├── components/   ← IOCInput, EnrichmentTable, VerdictBadge, AnalystReport
 │       └── lib/          ← IOC parser mirror, defang utility
-├── CLAUDE.md             ← Full technical specification and architecture
+├── SPEC.md               ← Full technical specification and architecture
 └── start-argus.command   ← One-click startup script
 ```
 
-See `CLAUDE.md` for full technical documentation including API schemas, security architecture, and enrichment response format.
+See `SPEC.md` for full technical documentation including API schemas, security architecture, and enrichment response format.
