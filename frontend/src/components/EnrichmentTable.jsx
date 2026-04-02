@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import IOCTypeChip from './IOCTypeChip.jsx';
 import VerdictBadge from './VerdictBadge.jsx';
 import { defang } from '../lib/defang.js';
@@ -5,12 +6,70 @@ import { defang } from '../lib/defang.js';
 function SkeletonRow() {
   return (
     <tr style={{ borderBottom: '1px solid var(--border)' }}>
-      {[1, 2, 3, 4, 5].map(i => (
+      {[1, 2, 3, 4, 5, 6].map(i => (
         <td key={i} style={{ padding: '10px 12px' }}>
           <div className="skeleton" style={{ height: '14px', width: i === 1 ? '80%' : '60%' }} />
         </td>
       ))}
     </tr>
+  );
+}
+
+function VTCell({ data, error, queried, vtLink }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!queried) return <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>N/A</span>;
+  if (error) return <span style={{ color: '#ff7b7b', fontSize: '11px' }}>ERR</span>;
+  if (!data) return <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>—</span>;
+
+  const malicious = data.malicious || 0;
+  const total = data.total || 0;
+  let color = 'var(--accent-teal)';
+  if (malicious > 2) color = '#ff7b7b';
+  else if (malicious > 0) color = 'var(--accent-amber)';
+
+  const handleCopyLink = async (e) => {
+    e.stopPropagation();
+    if (!vtLink) return;
+    try {
+      await navigator.clipboard.writeText(vtLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <span style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: '12px',
+        color,
+        fontWeight: 600
+      }}>
+        {malicious}/{total}
+      </span>
+      {vtLink && (
+        <button
+          onClick={handleCopyLink}
+          title="Copy VirusTotal link"
+          style={{
+            background: 'none',
+            border: `1px solid ${copied ? 'rgba(57,211,83,0.4)' : 'var(--border)'}`,
+            borderRadius: '3px',
+            padding: '1px 5px',
+            fontSize: '9px',
+            cursor: 'pointer',
+            color: copied ? 'var(--accent-teal)' : 'var(--text-secondary)',
+            fontFamily: "'JetBrains Mono', monospace",
+            transition: 'all 0.15s'
+          }}
+          onMouseEnter={e => { if (!copied) e.currentTarget.style.borderColor = 'var(--accent-blue)'; }}
+          onMouseLeave={e => { if (!copied) e.currentTarget.style.borderColor = 'var(--border)'; }}
+        >
+          {copied ? '✓' : 'VT'}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -31,29 +90,6 @@ function ScoreCell({ value, threshold75, threshold25 }) {
       fontWeight: 600
     }}>
       {value}
-    </span>
-  );
-}
-
-function VTCell({ data, error, queried }) {
-  if (!queried) return <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>N/A</span>;
-  if (error) return <span style={{ color: '#ff7b7b', fontSize: '11px' }}>ERR</span>;
-  if (!data) return <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>—</span>;
-
-  const malicious = data.malicious || 0;
-  const total = data.total || 0;
-  let color = 'var(--accent-teal)';
-  if (malicious > 2) color = '#ff7b7b';
-  else if (malicious > 0) color = 'var(--accent-amber)';
-
-  return (
-    <span style={{
-      fontFamily: "'JetBrains Mono', monospace",
-      fontSize: '12px',
-      color,
-      fontWeight: 600
-    }}>
-      {malicious}/{total}
     </span>
   );
 }
@@ -84,10 +120,147 @@ function TagsCell({ tags }) {
   );
 }
 
+function VerdictSummaryBar({ results }) {
+  const counts = results.reduce((acc, r) => {
+    const v = (r.verdict || 'CLEAN').toUpperCase();
+    acc[v] = (acc[v] || 0) + 1;
+    return acc;
+  }, {});
+
+  const items = [
+    { label: 'MALICIOUS', color: '#da3633', bg: 'rgba(218,54,51,0.12)', border: 'rgba(218,54,51,0.3)' },
+    { label: 'SUSPICIOUS', color: '#f0883e', bg: 'rgba(240,136,62,0.12)', border: 'rgba(240,136,62,0.3)' },
+    { label: 'CLEAN', color: '#39d353', bg: 'rgba(57,211,83,0.1)', border: 'rgba(57,211,83,0.25)' },
+  ].filter(i => counts[i.label]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div style={{
+      display: 'flex',
+      gap: '8px',
+      alignItems: 'center',
+      padding: '8px 14px',
+      borderBottom: '1px solid var(--border)',
+      backgroundColor: 'rgba(0,0,0,0.15)',
+      flexWrap: 'wrap'
+    }}>
+      <span style={{
+        fontSize: '10px',
+        color: 'var(--text-secondary)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        fontWeight: 600,
+        marginRight: '4px'
+      }}>
+        Summary
+      </span>
+      {items.map(({ label, color, bg, border }) => (
+        <span key={label} style={{
+          fontSize: '11px',
+          fontWeight: 700,
+          fontFamily: "'JetBrains Mono', monospace",
+          padding: '2px 8px',
+          borderRadius: '4px',
+          backgroundColor: bg,
+          border: `1px solid ${border}`,
+          color
+        }}>
+          {counts[label]} {label}
+        </span>
+      ))}
+      <span style={{
+        fontSize: '10px',
+        color: 'var(--text-secondary)',
+        marginLeft: 'auto'
+      }}>
+        {results.length} total
+      </span>
+    </div>
+  );
+}
+
+function FilterBar({ active, onChange, counts }) {
+  const filters = ['ALL', 'MALICIOUS', 'SUSPICIOUS', 'CLEAN'];
+
+  return (
+    <div style={{
+      display: 'flex',
+      gap: '4px',
+      padding: '8px 14px',
+      borderBottom: '1px solid var(--border)',
+      backgroundColor: 'var(--bg-elevated)'
+    }}>
+      {filters.map(f => {
+        const isActive = active === f;
+        const count = f === 'ALL' ? null : counts[f] || 0;
+        const colors = {
+          MALICIOUS: '#da3633',
+          SUSPICIOUS: '#f0883e',
+          CLEAN: '#39d353',
+          ALL: 'var(--accent-blue)'
+        };
+
+        return (
+          <button
+            key={f}
+            onClick={() => onChange(f)}
+            style={{
+              padding: '3px 10px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 600,
+              fontFamily: "'JetBrains Mono', monospace",
+              cursor: 'pointer',
+              border: `1px solid ${isActive ? colors[f] : 'var(--border)'}`,
+              backgroundColor: isActive ? `${colors[f]}18` : 'transparent',
+              color: isActive ? colors[f] : 'var(--text-secondary)',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = colors[f]; }}
+            onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = 'var(--border)'; }}
+          >
+            {f}{count !== null && count > 0 ? ` (${count})` : ''}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function buildVTLink(ioc) {
+  const base = 'https://www.virustotal.com/gui';
+  switch (ioc.type) {
+    case 'sha256':
+    case 'sha1':
+    case 'md5':
+      return `${base}/file/${ioc.value}`;
+    case 'ipv4':
+      return `${base}/ip-address/${ioc.value}`;
+    case 'domain':
+      return `${base}/domain/${ioc.value}`;
+    case 'url':
+      return `${base}/url/${btoa(ioc.value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')}`;
+    default:
+      return null;
+  }
+}
+
 export default function EnrichmentTable({ results, loading, pendingCount }) {
+  const [filter, setFilter] = useState('ALL');
   const hasResults = results && results.length > 0;
 
   if (!hasResults && !loading) return null;
+
+  const verdictCounts = results.reduce((acc, r) => {
+    const v = (r.verdict || 'CLEAN').toUpperCase();
+    acc[v] = (acc[v] || 0) + 1;
+    return acc;
+  }, {});
+
+  const filteredResults = filter === 'ALL'
+    ? results
+    : results.filter(r => (r.verdict || 'CLEAN').toUpperCase() === filter);
 
   return (
     <div style={{
@@ -97,6 +270,7 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
       overflow: 'hidden',
       marginTop: '16px'
     }}>
+      {/* Header */}
       <div style={{
         padding: '10px 14px',
         borderBottom: '1px solid var(--border)',
@@ -119,6 +293,16 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
           </span>
         )}
       </div>
+
+      {/* Verdict summary bar — only show when enrichment complete */}
+      {hasResults && !loading && (
+        <VerdictSummaryBar results={results} />
+      )}
+
+      {/* Filter bar — only show when there are results */}
+      {hasResults && (
+        <FilterBar active={filter} onChange={setFilter} counts={verdictCounts} />
+      )}
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{
@@ -146,18 +330,19 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
             </tr>
           </thead>
           <tbody>
-            {results.map((item, i) => {
+            {filteredResults.map((item, i) => {
               const { ioc, enrichment, verdict } = item;
               const vt = enrichment?.virustotal;
               const abuse = enrichment?.abuseipdb;
               const mb = enrichment?.malwarebazaar;
 
-              // Collect tags from VT and MB
               const allTags = [
                 ...(vt?.data?.tags || []),
                 ...(mb?.data?.tags || []),
                 ...(mb?.data?.found ? ['malware-db'] : [])
               ];
+
+              const vtLink = buildVTLink(ioc);
 
               return (
                 <tr key={i} style={{
@@ -168,7 +353,6 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
                 onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(56,139,253,0.05)'}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = i % 2 === 0 ? 'transparent' : 'rgba(33,38,45,0.3)'}
                 >
-                  {/* IOC value */}
                   <td style={{ padding: '10px 12px', maxWidth: '240px' }}>
                     <span style={{
                       fontFamily: "'JetBrains Mono', monospace",
@@ -185,21 +369,19 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
                     </span>
                   </td>
 
-                  {/* Type */}
                   <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                     <IOCTypeChip type={ioc.type} />
                   </td>
 
-                  {/* VT Score */}
                   <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                     <VTCell
                       data={vt?.data}
                       error={vt?.error}
                       queried={vt?.queried}
+                      vtLink={vtLink}
                     />
                   </td>
 
-                  {/* Abuse score */}
                   <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                     {abuse?.queried ? (
                       <ScoreCell
@@ -212,12 +394,10 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
                     )}
                   </td>
 
-                  {/* Tags / MalwareBazaar status */}
                   <td style={{ padding: '10px 12px' }}>
                     <TagsCell tags={allTags} />
                   </td>
 
-                  {/* Verdict */}
                   <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                     <VerdictBadge verdict={verdict} />
                   </td>
@@ -225,10 +405,23 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
               );
             })}
 
-            {/* Skeleton rows for pending IOCs */}
             {loading && Array.from({ length: Math.min(pendingCount || 3, 5) }).map((_, i) => (
               <SkeletonRow key={`skel-${i}`} />
             ))}
+
+            {/* Empty state when filter has no matches */}
+            {!loading && filteredResults.length === 0 && results.length > 0 && (
+              <tr>
+                <td colSpan={6} style={{
+                  padding: '24px',
+                  textAlign: 'center',
+                  color: 'var(--text-secondary)',
+                  fontSize: '12px'
+                }}>
+                  No {filter.toLowerCase()} IOCs in this batch
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

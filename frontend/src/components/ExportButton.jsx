@@ -56,6 +56,34 @@ function buildMarkdown(results, reportText) {
   return lines.join('\n');
 }
 
+function buildCSV(results) {
+  const headers = ['IOC', 'Type', 'Verdict', 'VT Malicious', 'VT Total', 'Abuse Score', 'MalwareBazaar', 'MB Name', 'Tags'];
+  const rows = results.map(({ ioc, enrichment, verdict }) => {
+    const vt = enrichment?.virustotal;
+    const abuse = enrichment?.abuseipdb;
+    const mb = enrichment?.malwarebazaar;
+    const tags = [
+      ...(vt?.data?.tags || []),
+      ...(mb?.data?.tags || []),
+      ...(mb?.data?.found ? ['malware-db'] : [])
+    ].join(' | ');
+
+    return [
+      defang(ioc.value, ioc.type),
+      ioc.type,
+      verdict || 'CLEAN',
+      vt?.queried ? (vt?.data?.malicious ?? '') : 'N/A',
+      vt?.queried ? (vt?.data?.total ?? '') : 'N/A',
+      abuse?.queried ? (abuse?.data?.abuseScore ?? '') : 'N/A',
+      mb?.queried ? (mb?.data?.found ? 'YES' : 'No') : 'N/A',
+      mb?.data?.name || '',
+      tags
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+  });
+
+  return [headers.join(','), ...rows].join('\n');
+}
+
 export default function ExportButton({ results, reportText }) {
   const [copyState, setCopyState] = useState('idle'); // idle | copied | error
 
@@ -84,6 +112,20 @@ export default function ExportButton({ results, reportText }) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [results, reportText]);
+
+  const handleCSV = useCallback(() => {
+    const csv = buildCSV(results);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+    a.href = url;
+    a.download = `argus-report-${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [results]);
 
   if (!results || results.length === 0) return null;
 
@@ -132,6 +174,26 @@ export default function ExportButton({ results, reportText }) {
         }}
       >
         ↓ Download .md
+      </button>
+
+      <button
+        onClick={handleCSV}
+        style={{
+          ...btnBase,
+          backgroundColor: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          color: 'var(--text-secondary)'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.color = 'var(--accent-teal)';
+          e.currentTarget.style.borderColor = 'var(--accent-teal)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.color = 'var(--text-secondary)';
+          e.currentTarget.style.borderColor = 'var(--border)';
+        }}
+      >
+        ↓ Download .csv
       </button>
     </div>
   );
