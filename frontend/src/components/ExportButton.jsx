@@ -1,9 +1,6 @@
 import { useState, useCallback } from 'react';
 import { defang } from '../lib/defang.js';
 
-/**
- * ExportButton — copy to clipboard and download as markdown.
- */
 function buildMarkdown(results, reportText) {
   const lines = [];
   const now = new Date().toISOString();
@@ -15,27 +12,29 @@ function buildMarkdown(results, reportText) {
   lines.push('');
   lines.push('## IOC Summary');
   lines.push('');
-  lines.push('| IOC | Type | Verdict | VT Score | Abuse % | MB Found |');
-  lines.push('|-----|------|---------|----------|---------|----------|');
+  lines.push('| IOC | Type | Verdict | VT Score | Abuse % | MB Found | URLScan | GreyNoise | OTX Pulses |');
+  lines.push('|-----|------|---------|----------|---------|----------|---------|-----------|------------|');
 
   for (const item of results) {
     const { ioc, enrichment, verdict } = item;
-    const vt = enrichment?.virustotal;
-    const abuse = enrichment?.abuseipdb;
-    const mb = enrichment?.malwarebazaar;
+    const vt      = enrichment?.virustotal;
+    const abuse   = enrichment?.abuseipdb;
+    const mb      = enrichment?.malwarebazaar;
+    const us      = enrichment?.urlscan;
+    const gn      = enrichment?.greynoise;
+    const otx     = enrichment?.otx;
 
-    const vtScore = vt?.queried && vt?.data
-      ? `${vt.data.malicious || 0}/${vt.data.total || 0}`
+    const vtScore    = vt?.queried    ? `${vt.data.malicious || 0}/${vt.data.total || 0}` : 'N/A';
+    const abuseScore = abuse?.queried ? `${abuse.data.abuseScore || 0}` : 'N/A';
+    const mbFound    = mb?.queried    ? (mb?.data?.found ? 'YES' : 'No') : 'N/A';
+    const usVerdict  = us?.queried    ? (us?.data?.verdict?.toUpperCase() || 'UNRATED') : 'N/A';
+    const gnClass    = gn?.queried && gn?.data?.found
+      ? (gn.data.riot ? 'RIOT' : gn.data.noise ? 'NOISE' : gn.data.classification?.toUpperCase() || 'OK')
       : 'N/A';
-
-    const abuseScore = abuse?.queried && abuse?.data
-      ? `${abuse.data.abuseScore || 0}%`
-      : 'N/A';
-
-    const mbFound = mb?.queried ? (mb?.data?.found ? 'YES' : 'No') : 'N/A';
+    const otxPulses  = otx?.queried   ? (otx?.data?.pulseCount || 0) : 'N/A';
 
     lines.push(
-      `| \`${defang(ioc.value, ioc.type)}\` | ${ioc.type} | **${verdict}** | ${vtScore} | ${abuseScore} | ${mbFound} |`
+      `| \`${defang(ioc.value, ioc.type)}\` | ${ioc.type} | **${verdict}** | ${vtScore} | ${abuseScore} | ${mbFound} | ${usVerdict} | ${gnClass} | ${otxPulses} |`
     );
   }
 
@@ -57,11 +56,30 @@ function buildMarkdown(results, reportText) {
 }
 
 function buildCSV(results) {
-  const headers = ['IOC', 'Type', 'Verdict', 'VT Malicious', 'VT Total', 'Abuse Score', 'MalwareBazaar', 'MB Name', 'Tags'];
+  const headers = [
+    'IOC', 'Type', 'Verdict',
+    'VT Malicious', 'VT Total',
+    'Abuse Score', 'Abuse Reports',
+    'MalwareBazaar', 'MB Name',
+    'URLScan Verdict', 'URLScan Scans',
+    'GreyNoise',
+    'OTX Pulses', 'OTX Adversaries', 'OTX Malware Families', 'OTX ATT&CK',
+    'Country', 'ASN', 'Tags'
+  ];
+
   const rows = results.map(({ ioc, enrichment, verdict }) => {
-    const vt = enrichment?.virustotal;
+    const vt    = enrichment?.virustotal;
     const abuse = enrichment?.abuseipdb;
-    const mb = enrichment?.malwarebazaar;
+    const mb    = enrichment?.malwarebazaar;
+    const us    = enrichment?.urlscan;
+    const gn    = enrichment?.greynoise;
+    const otx   = enrichment?.otx;
+    const geo   = enrichment?.geo;
+
+    const gnClass = gn?.queried && gn?.data?.found
+      ? (gn.data.riot ? 'RIOT' : gn.data.noise ? 'NOISE' : gn.data.classification?.toUpperCase() || 'OK')
+      : '';
+
     const tags = [
       ...(vt?.data?.tags || []),
       ...(mb?.data?.tags || []),
@@ -72,11 +90,21 @@ function buildCSV(results) {
       defang(ioc.value, ioc.type),
       ioc.type,
       verdict || 'CLEAN',
-      vt?.queried ? (vt?.data?.malicious ?? '') : 'N/A',
-      vt?.queried ? (vt?.data?.total ?? '') : 'N/A',
+      vt?.queried  ? (vt?.data?.malicious ?? '')  : 'N/A',
+      vt?.queried  ? (vt?.data?.total ?? '')       : 'N/A',
       abuse?.queried ? (abuse?.data?.abuseScore ?? '') : 'N/A',
-      mb?.queried ? (mb?.data?.found ? 'YES' : 'No') : 'N/A',
+      abuse?.queried ? (abuse?.data?.totalReports ?? '') : 'N/A',
+      mb?.queried  ? (mb?.data?.found ? 'YES' : 'No') : 'N/A',
       mb?.data?.name || '',
+      us?.queried  ? (us?.data?.verdict?.toUpperCase() || 'UNRATED') : 'N/A',
+      us?.queried  ? (us?.data?.totalScans ?? '') : 'N/A',
+      gnClass || (gn?.queried ? 'NOT FOUND' : 'N/A'),
+      otx?.queried ? (otx?.data?.pulseCount ?? 0) : 'N/A',
+      otx?.data?.adversaries?.join(' | ') || '',
+      otx?.data?.malwareFamilies?.join(' | ') || '',
+      otx?.data?.attackIds?.join(' | ') || '',
+      geo?.data?.country || abuse?.data?.country || vt?.data?.country || '',
+      geo?.data?.as || '',
       tags
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
   });
@@ -84,13 +112,89 @@ function buildCSV(results) {
   return [headers.join(','), ...rows].join('\n');
 }
 
+function buildJSON(results, reportText) {
+  const output = {
+    generated: new Date().toISOString(),
+    tool: 'ARGUS IOC Enrichment Engine',
+    iocs: results.map(({ ioc, enrichment, verdict }) => {
+      const vt    = enrichment?.virustotal;
+      const abuse = enrichment?.abuseipdb;
+      const mb    = enrichment?.malwarebazaar;
+      const us    = enrichment?.urlscan;
+      const gn    = enrichment?.greynoise;
+      const otx   = enrichment?.otx;
+      const geo   = enrichment?.geo;
+
+      return {
+        ioc: ioc.value,
+        type: ioc.type,
+        verdict,
+        virustotal: vt?.queried ? {
+          malicious: vt.data.malicious,
+          total: vt.data.total,
+          tags: vt.data.tags,
+          lastSeen: vt.data.lastSeen
+        } : null,
+        abuseipdb: abuse?.queried ? {
+          score: abuse.data.abuseScore,
+          reports: abuse.data.totalReports,
+          country: abuse.data.country
+        } : null,
+        malwarebazaar: mb?.queried ? {
+          found: mb.data.found,
+          name: mb.data.name,
+          signature: mb.data.signature
+        } : null,
+        urlscan: us?.queried ? {
+          verdict: us.data.verdict,
+          scans: us.data.totalScans,
+          score: us.data.score
+        } : null,
+        greynoise: gn?.queried && gn?.data?.found ? {
+          classification: gn.data.riot ? 'riot' : gn.data.noise ? 'noise' : gn.data.classification,
+          name: gn.data.name
+        } : null,
+        otx: otx?.queried && otx?.data?.found ? {
+          pulses: otx.data.pulseCount,
+          adversaries: otx.data.adversaries,
+          malwareFamilies: otx.data.malwareFamilies,
+          attackIds: otx.data.attackIds,
+          tags: otx.data.tags
+        } : null,
+        geolocation: geo?.data?.found ? {
+          country: geo.data.country,
+          countryCode: geo.data.countryCode,
+          asn: geo.data.as,
+          org: geo.data.asName
+        } : null
+      };
+    })
+  };
+
+  if (reportText) output.intelligenceBrief = reportText;
+
+  return JSON.stringify(output, null, 2);
+}
+
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type: `${type};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  a.href = url;
+  a.download = `${filename}-${ts}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function ExportButton({ results, reportText }) {
-  const [copyState, setCopyState] = useState('idle'); // idle | copied | error
+  const [copyState, setCopyState] = useState('idle');
 
   const handleCopy = useCallback(async () => {
     try {
-      const md = buildMarkdown(results, reportText);
-      await navigator.clipboard.writeText(md);
+      await navigator.clipboard.writeText(buildMarkdown(results, reportText));
       setCopyState('copied');
       setTimeout(() => setCopyState('idle'), 2000);
     } catch {
@@ -98,34 +202,6 @@ export default function ExportButton({ results, reportText }) {
       setTimeout(() => setCopyState('idle'), 2000);
     }
   }, [results, reportText]);
-
-  const handleDownload = useCallback(() => {
-    const md = buildMarkdown(results, reportText);
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
-    a.href = url;
-    a.download = `argus-report-${ts}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [results, reportText]);
-
-  const handleCSV = useCallback(() => {
-    const csv = buildCSV(results);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
-    a.href = url;
-    a.download = `argus-report-${ts}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [results]);
 
   if (!results || results.length === 0) return null;
 
@@ -139,61 +215,51 @@ export default function ExportButton({ results, reportText }) {
     display: 'flex',
     alignItems: 'center',
     gap: '5px',
-    transition: 'all 0.15s'
+    transition: 'all 0.15s',
+    backgroundColor: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-secondary)'
   };
 
   return (
-    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
+    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px', flexWrap: 'wrap' }}>
       <button
         onClick={handleCopy}
         style={{
           ...btnBase,
           backgroundColor: copyState === 'copied' ? 'rgba(35,134,54,0.2)' : 'var(--bg-elevated)',
-          border: `1px solid ${copyState === 'copied' ? 'rgba(35,134,54,0.5)' : 'var(--border)'}`,
+          borderColor: copyState === 'copied' ? 'rgba(35,134,54,0.5)' : 'var(--border)',
           color: copyState === 'copied' ? 'var(--accent-teal)' : 'var(--text-secondary)'
         }}
       >
-        {copyState === 'copied' ? '✓ Copied' : copyState === 'error' ? '✗ Failed' : '⧉ Copy Markdown'}
+        {copyState === 'copied' ? '✓ Copied' : copyState === 'error' ? '✗ Failed' : '⧉ Copy MD'}
       </button>
 
       <button
-        onClick={handleDownload}
-        style={{
-          ...btnBase,
-          backgroundColor: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          color: 'var(--text-secondary)'
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.color = 'var(--text-primary)';
-          e.currentTarget.style.borderColor = 'var(--accent-blue)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.color = 'var(--text-secondary)';
-          e.currentTarget.style.borderColor = 'var(--border)';
-        }}
+        onClick={() => downloadFile(buildMarkdown(results, reportText), 'argus-report.md', 'text/markdown')}
+        style={btnBase}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--accent-blue)'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
       >
-        ↓ Download .md
+        ↓ .md
       </button>
 
       <button
-        onClick={handleCSV}
-        style={{
-          ...btnBase,
-          backgroundColor: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          color: 'var(--text-secondary)'
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.color = 'var(--accent-teal)';
-          e.currentTarget.style.borderColor = 'var(--accent-teal)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.color = 'var(--text-secondary)';
-          e.currentTarget.style.borderColor = 'var(--border)';
-        }}
+        onClick={() => downloadFile(buildCSV(results), 'argus-report.csv', 'text/csv')}
+        style={btnBase}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-teal)'; e.currentTarget.style.borderColor = 'var(--accent-teal)'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
       >
-        ↓ Download .csv
+        ↓ .csv
+      </button>
+
+      <button
+        onClick={() => downloadFile(buildJSON(results, reportText), 'argus-report.json', 'application/json')}
+        style={btnBase}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-amber)'; e.currentTarget.style.borderColor = 'var(--accent-amber)'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+      >
+        ↓ .json
       </button>
     </div>
   );

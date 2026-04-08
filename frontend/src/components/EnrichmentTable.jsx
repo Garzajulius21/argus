@@ -466,6 +466,9 @@ function FilterBar({ active, onChange, counts }) {
 export default function EnrichmentTable({ results, loading, pendingCount, thresholds = DEFAULT_THRESHOLDS, onPivot }) {
   const [filter, setFilter] = useState('ALL');
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [sortKey, setSortKey] = useState(null);   // 'vt' | 'abuse' | 'verdict' | null
+  const [sortDir, setSortDir] = useState('desc');  // 'asc' | 'desc'
+  const [copyMalicious, setCopyMalicious] = useState('idle');
 
   const hasResults = results && results.length > 0;
 
@@ -484,9 +487,29 @@ export default function EnrichmentTable({ results, loading, pendingCount, thresh
     return acc;
   }, {});
 
-  const filteredResults = filter === 'ALL'
-    ? resultsWithVerdict
-    : resultsWithVerdict.filter(r => (r.verdict || 'CLEAN').toUpperCase() === filter);
+  const filteredResults = (() => {
+    let rows = filter === 'ALL'
+      ? resultsWithVerdict
+      : resultsWithVerdict.filter(r => (r.verdict || 'CLEAN').toUpperCase() === filter);
+
+    if (sortKey) {
+      rows = [...rows].sort((a, b) => {
+        let av, bv;
+        if (sortKey === 'vt') {
+          av = a.enrichment?.virustotal?.data?.malicious ?? -1;
+          bv = b.enrichment?.virustotal?.data?.malicious ?? -1;
+        } else if (sortKey === 'abuse') {
+          av = a.enrichment?.abuseipdb?.data?.abuseScore ?? -1;
+          bv = b.enrichment?.abuseipdb?.data?.abuseScore ?? -1;
+        } else if (sortKey === 'verdict') {
+          av = verdictOrder[(a.verdict || 'CLEAN').toUpperCase()] ?? 0;
+          bv = verdictOrder[(b.verdict || 'CLEAN').toUpperCase()] ?? 0;
+        }
+        return sortDir === 'desc' ? bv - av : av - bv;
+      });
+    }
+    return rows;
+  })();
 
   // Auto-expand malicious rows as they arrive
   useEffect(() => {
@@ -505,6 +528,32 @@ export default function EnrichmentTable({ results, loading, pendingCount, thresh
       next.has(idx) ? next.delete(idx) : next.add(idx);
       return next;
     });
+  };
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  };
+
+  const verdictOrder = { MALICIOUS: 2, SUSPICIOUS: 1, CLEAN: 0 };
+
+  const handleCopyMalicious = async () => {
+    const maliciousIOCs = resultsWithVerdict
+      .filter(r => (r.verdict || '').toUpperCase() === 'MALICIOUS')
+      .map(r => r.ioc.value)
+      .join('\n');
+    try {
+      await navigator.clipboard.writeText(maliciousIOCs);
+      setCopyMalicious('copied');
+      setTimeout(() => setCopyMalicious('idle'), 2000);
+    } catch {
+      setCopyMalicious('error');
+      setTimeout(() => setCopyMalicious('idle'), 2000);
+    }
   };
 
   return (
@@ -533,20 +582,62 @@ export default function EnrichmentTable({ results, loading, pendingCount, thresh
       </div>
 
       {hasResults && !loading && <VerdictSummaryBar results={results} />}
-      {hasResults && <FilterBar active={filter} onChange={setFilter} counts={verdictCounts} />}
+      {hasResults && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ flex: 1 }}>
+            <FilterBar active={filter} onChange={setFilter} counts={verdictCounts} />
+          </div>
+          {verdictCounts['MALICIOUS'] > 0 && (
+            <button
+              onClick={handleCopyMalicious}
+              style={{
+                marginRight: '8px',
+                padding: '4px 10px',
+                fontSize: '11px', fontWeight: 600,
+                fontFamily: "'JetBrains Mono', monospace",
+                cursor: 'pointer', borderRadius: '4px',
+                border: `1px solid ${copyMalicious === 'copied' ? 'rgba(57,211,83,0.4)' : 'rgba(218,54,51,0.4)'}`,
+                backgroundColor: copyMalicious === 'copied' ? 'rgba(57,211,83,0.1)' : 'rgba(218,54,51,0.1)',
+                color: copyMalicious === 'copied' ? 'var(--accent-teal)' : '#ff7b7b',
+                transition: 'all 0.15s', whiteSpace: 'nowrap'
+              }}
+            >
+              {copyMalicious === 'copied' ? '✓ Copied' : `⧉ Copy ${verdictCounts['MALICIOUS']} Malicious`}
+            </button>
+          )}
+        </div>
+      )}
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
         <thead>
           <tr style={{ backgroundColor: 'var(--bg-elevated)' }}>
-            {['IOC', 'Type', 'VT Score', 'Abuse %', 'Verdict'].map(h => (
-              <th key={h} style={{
-                padding: '8px 12px', textAlign: 'left',
-                color: 'var(--text-secondary)', fontWeight: 600,
-                fontSize: '11px', letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                borderBottom: '1px solid var(--border)',
-                whiteSpace: 'nowrap'
-              }}>{h}</th>
+            {[
+              { label: 'IOC',      key: null },
+              { label: 'Type',     key: null },
+              { label: 'VT Score', key: 'vt' },
+              { label: 'Abuse %',  key: 'abuse' },
+              { label: 'Verdict',  key: 'verdict' }
+            ].map(({ label, key }) => (
+              <th key={label}
+                onClick={key ? () => handleSort(key) : undefined}
+                style={{
+                  padding: '8px 12px', textAlign: 'left',
+                  color: sortKey === key ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                  fontWeight: 600, fontSize: '11px',
+                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                  borderBottom: '1px solid var(--border)',
+                  whiteSpace: 'nowrap',
+                  cursor: key ? 'pointer' : 'default',
+                  userSelect: 'none'
+                }}
+              >
+                {label}
+                {key && (
+                  <span style={{ marginLeft: '4px', opacity: sortKey === key ? 1 : 0.3 }}>
+                    {sortKey === key ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}
+                  </span>
+                )}
+              </th>
             ))}
           </tr>
         </thead>
