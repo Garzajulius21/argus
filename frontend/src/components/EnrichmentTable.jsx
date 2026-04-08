@@ -71,6 +71,7 @@ function ExpandedDetail({ ioc, enrichment }) {
   const gn       = enrichment?.greynoise;
   const vtLink   = buildVTLink(ioc);
 
+
   const allTags = [
     ...(vt?.data?.tags  || []),
     ...(mb?.data?.tags  || []),
