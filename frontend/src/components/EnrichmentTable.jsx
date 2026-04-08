@@ -332,15 +332,20 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
     const { registrar, createdDate, expiryDate } = vt.data || {};
     if (registrar || createdDate || expiryDate) {
       const created = createdDate ? new Date(createdDate).getFullYear() : null;
-      const expiry  = expiryDate  ? new Date(expiryDate).toLocaleDateString()  : null;
+      const expiry  = expiryDate  ? new Date(expiryDate).toLocaleDateString() : null;
       const ageYears = createdDate
         ? Math.floor((Date.now() - new Date(createdDate)) / (1000 * 60 * 60 * 24 * 365))
         : null;
+      const whoisUrl = `https://who.is/whois/${ioc.value}`;
       sections.push(
         <div key="whois" style={{ minWidth: '130px' }}>
           <SectionLabel>WHOIS</SectionLabel>
-          {registrar  && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={registrar}>{registrar}</div>}
-          {created    && (
+          {registrar && (
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={registrar}>
+              {registrar}
+            </div>
+          )}
+          {created && (
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
               Registered {created}
               {ageYears !== null && (
@@ -354,7 +359,20 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
               )}
             </div>
           )}
-          {expiry     && <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Expires {expiry}</div>}
+          {expiry && <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Expires {expiry}</div>}
+          <span
+            onClick={e => openExternal(whoisUrl, e)}
+            title="Full WHOIS record"
+            style={{
+              fontSize: '10px', cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              fontFamily: "'JetBrains Mono', monospace",
+              textDecoration: 'underline',
+              textDecorationStyle: 'dotted', textUnderlineOffset: '2px'
+            }}
+          >
+            Full WHOIS ↗
+          </span>
         </div>
       );
     }
