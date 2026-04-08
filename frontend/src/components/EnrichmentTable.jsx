@@ -58,9 +58,55 @@ function SectionLabel({ children }) {
   );
 }
 
+// ─── Pivot target builder ─────────────────────────────────────────────────────
+
+function buildPivotTarget(ioc, enrichment) {
+  const vt    = enrichment?.virustotal;
+  const abuse = enrichment?.abuseipdb;
+
+  switch (ioc.type) {
+    case 'ipv4': {
+      // Best: domain associated with this IP from AbuseIPDB
+      const domain = abuse?.data?.signature;
+      if (domain && domain.includes('.') && !domain.includes(' '))
+        return { label: domain, value: domain, description: 'domain from AbuseIPDB' };
+      // Fallback: VT name if it looks like a domain
+      const vtName = vt?.data?.name;
+      if (vtName && vtName.includes('.') && !vtName.includes(' ') && !vtName.includes('\\'))
+        return { label: vtName, value: vtName, description: 'name from VirusTotal' };
+      return null;
+    }
+    case 'url': {
+      // Pivot to the hostname
+      try {
+        const hostname = new URL(ioc.value).hostname;
+        if (hostname) return { label: hostname, value: hostname, description: 'domain from URL' };
+      } catch {}
+      return null;
+    }
+    case 'domain': {
+      // Pivot to a URL for URLScan coverage
+      return { label: `http://${ioc.value}`, value: `http://${ioc.value}`, description: 'URL from domain' };
+    }
+    case 'sha256':
+    case 'sha1':
+    case 'md5': {
+      // Pivot to VT name if it looks like a domain or URL
+      const name = vt?.data?.name;
+      if (!name) return null;
+      if (name.startsWith('http')) return { label: name, value: name, description: 'URL from VirusTotal' };
+      if (name.includes('.') && !name.includes(' ') && !name.includes('\\') && !name.includes('/'))
+        return { label: name, value: name, description: 'domain from VirusTotal' };
+      return null;
+    }
+    default:
+      return null;
+  }
+}
+
 // ─── Expanded detail row ──────────────────────────────────────────────────────
 
-function ExpandedDetail({ ioc, enrichment }) {
+function ExpandedDetail({ ioc, enrichment, onPivot }) {
   const [copied, setCopied] = useState(false);
 
   const vt       = enrichment?.virustotal;
@@ -224,6 +270,8 @@ function ExpandedDetail({ ioc, enrichment }) {
     );
   }
 
+  const pivotTarget = onPivot ? buildPivotTarget(ioc, enrichment) : null;
+
   return (
     <tr>
       <td colSpan={COLS} style={{
@@ -238,6 +286,34 @@ function ExpandedDetail({ ioc, enrichment }) {
           </div>
         ) : (
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No additional detail available.</span>
+        )}
+
+        {pivotTarget && (
+          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+            <SectionLabel>Pivot</SectionLabel>
+            <button
+              onClick={e => { e.stopPropagation(); onPivot(pivotTarget.value); }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                background: 'none',
+                border: '1px solid var(--accent-blue)',
+                borderRadius: '4px', padding: '4px 10px',
+                fontSize: '11px', cursor: 'pointer',
+                color: 'var(--accent-blue)',
+                fontFamily: "'JetBrains Mono', monospace",
+                transition: 'background-color 0.15s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(56,139,253,0.1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              title={`Search for ${pivotTarget.description}`}
+            >
+              <span style={{ fontSize: '10px' }}>↗</span>
+              {pivotTarget.label}
+            </button>
+            <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--text-secondary)' }}>
+              {pivotTarget.description}
+            </span>
+          </div>
         )}
       </td>
     </tr>
@@ -333,7 +409,7 @@ function FilterBar({ active, onChange, counts }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function EnrichmentTable({ results, loading, pendingCount, thresholds = DEFAULT_THRESHOLDS }) {
+export default function EnrichmentTable({ results, loading, pendingCount, thresholds = DEFAULT_THRESHOLDS, onPivot }) {
   const [filter, setFilter] = useState('ALL');
   const [expandedRows, setExpandedRows] = useState(new Set());
 
@@ -503,6 +579,7 @@ export default function EnrichmentTable({ results, loading, pendingCount, thresh
                   key={`detail-${i}`}
                   ioc={ioc}
                   enrichment={enrichment}
+                  onPivot={onPivot}
                 />
               )
             ];

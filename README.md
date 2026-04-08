@@ -29,7 +29,8 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 10. **Configurable thresholds** — click ⚙ in the header to open the settings drawer. Adjust VT detection count and AbuseIPDB score thresholds for SUSPICIOUS and MALICIOUS independently. Verdicts on existing results update instantly — no need to re-run enrichment. Saved to localStorage.
 11. **Search history** — last 15 searches stored automatically in the browser. Each entry shows verdict summary and IOC preview. Click any entry to reload instantly.
 12. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes (requires Anthropic API key).
-13. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
+13. **Pivot search** — each expanded row shows a contextual "Pivot" button when a related IOC can be derived: URL → extracts the hostname domain, domain → builds a URL for URLScan coverage, IP → extracts associated domain from AbuseIPDB or VT name, hash → extracts domain/URL from VT name. One click pre-fills the input for immediate follow-on enrichment.
+14. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
 
 ---
 

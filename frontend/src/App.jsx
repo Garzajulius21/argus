@@ -25,6 +25,11 @@ export default function App() {
     setInputValue(iocValues.join('\n'));
   }, []);
 
+  const handlePivot = useCallback((value) => {
+    setInputValue(value);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const handleAnalyze = useCallback(async (parsedIocs) => {
     // Cancel any in-flight request
     if (abortRef.current) {
@@ -344,6 +349,7 @@ export default function App() {
                 loading={loading}
                 pendingCount={progress.total - progress.processed}
                 thresholds={thresholds}
+                onPivot={handlePivot}
               />
 
               {(reportText || reportStreaming) && (
