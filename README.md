@@ -75,7 +75,7 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 - Optional: GreyNoise key (free) — greynoise.io
 - Optional: URLScan.io key (free) — urlscan.io (works without one, key increases rate limit)
 - Optional: AlienVault OTX key (free) — otx.alienvault.com
-- Optional: Anthropic API key (paid ~$0.01–0.03/run) — console.anthropic.com
+- Optional: Anthropic API key (paid ~$0.05–0.15/run) — console.anthropic.com
 - ip-api.com — no key required (free tier, 45 req/min)
 
 ### First-time install
