@@ -138,7 +138,7 @@ async function generateReport(enrichedResults, sseWrite) {
 
   try {
     const stream = await client.messages.stream({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
       messages: [
@@ -162,6 +162,7 @@ async function generateReport(enrichedResults, sseWrite) {
     const safeMessage = err.message
       ? err.message.replace(apiKey, '[REDACTED]')
       : 'Unknown error generating report';
+    console.error('[claude] Report generation error:', safeMessage);
     sseWrite({ type: 'report_chunk', text: `**Report generation error:** ${safeMessage}\n` });
   }
 }
