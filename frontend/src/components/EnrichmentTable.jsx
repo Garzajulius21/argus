@@ -17,6 +17,39 @@ const countryFlag = (code) => {
   ).join('');
 };
 
+function openExternal(url, e) {
+  e.stopPropagation();
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function buildAbuseLink(ip) {
+  return `https://www.abuseipdb.com/check/${ip}`;
+}
+
+function buildGreyNoiseLink(ip) {
+  return `https://viz.greynoise.io/ip/${ip}`;
+}
+
+function buildURLScanLink(ioc) {
+  switch (ioc.type) {
+    case 'domain': return `https://urlscan.io/search/#domain:${ioc.value}`;
+    case 'ipv4':   return `https://urlscan.io/search/#ip:${ioc.value}`;
+    case 'url':    return `https://urlscan.io/search/#page.url:%22${encodeURIComponent(ioc.value)}%22`;
+    default:       return `https://urlscan.io/search/#${encodeURIComponent(ioc.value)}`;
+  }
+}
+
+function buildOTXLink(ioc) {
+  const base = 'https://otx.alienvault.com/indicator';
+  switch (ioc.type) {
+    case 'ipv4':   return `${base}/ip/${ioc.value}`;
+    case 'domain': return `${base}/domain/${ioc.value}`;
+    case 'url':    return `${base}/url/${encodeURIComponent(ioc.value)}`;
+    case 'md5': case 'sha1': case 'sha256': return `${base}/file/${ioc.value}`;
+    default:       return null;
+  }
+}
+
 function buildVTLink(ioc) {
   const base = 'https://www.virustotal.com/gui';
   switch (ioc.type) {
@@ -112,8 +145,6 @@ function buildPivotTarget(ioc, enrichment) {
 // ─── Expanded detail row ──────────────────────────────────────────────────────
 
 function ExpandedDetail({ ioc, enrichment, onPivot }) {
-  const [copied, setCopied] = useState(false);
-
   const vt       = enrichment?.virustotal;
   const abuse    = enrichment?.abuseipdb;
   const mb       = enrichment?.malwarebazaar;
@@ -123,18 +154,11 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
   const otx      = enrichment?.otx;
   const vtLink   = buildVTLink(ioc);
 
-
   const allTags = [
     ...(vt?.data?.tags  || []),
     ...(mb?.data?.tags  || []),
     ...(mb?.data?.found ? ['malware-db'] : [])
   ];
-
-  const handleCopyVT = async (e) => {
-    e.stopPropagation();
-    if (!vtLink) return;
-    try { await navigator.clipboard.writeText(vtLink); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
-  };
 
   const sections = [];
 
@@ -160,13 +184,16 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
     sections.push(
       <div key="gn" style={{ minWidth: '100px' }}>
         <SectionLabel>GreyNoise</SectionLabel>
-        <span style={{
-          display: 'inline-block', fontSize: '11px', fontWeight: 700,
-          fontFamily: "'JetBrains Mono', monospace",
-          padding: '2px 8px', borderRadius: '3px',
-          backgroundColor: `${gnColor}18`, border: `1px solid ${gnColor}55`, color: gnColor,
-          marginBottom: '3px'
-        }}>{gnLabel}</span>
+        <span
+          onClick={e => openExternal(buildGreyNoiseLink(ioc.value), e)}
+          title="Open in GreyNoise"
+          style={{
+            display: 'inline-block', fontSize: '11px', fontWeight: 700,
+            fontFamily: "'JetBrains Mono', monospace",
+            padding: '2px 8px', borderRadius: '3px',
+            backgroundColor: `${gnColor}18`, border: `1px solid ${gnColor}55`, color: gnColor,
+            marginBottom: '3px', cursor: 'pointer'
+          }}>{gnLabel} ↗</span>
         {gnName   && <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{gnName}</div>}
         {gnSeen   && <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>Last seen {gnSeen}</div>}
       </div>
@@ -181,13 +208,16 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
       <div key="otx" style={{ minWidth: '140px' }}>
         <SectionLabel>AlienVault OTX</SectionLabel>
         <div style={{ marginBottom: '4px' }}>
-          <span style={{
-            display: 'inline-block', fontSize: '11px', fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
-            padding: '2px 8px', borderRadius: '3px',
-            backgroundColor: `${otxColor}18`, border: `1px solid ${otxColor}55`, color: otxColor,
-            marginBottom: '3px'
-          }}>{pulseCount} pulse{pulseCount !== 1 ? 's' : ''}</span>
+          <span
+            onClick={e => { const link = buildOTXLink(ioc); if (link) openExternal(link, e); }}
+            title="Open in AlienVault OTX"
+            style={{
+              display: 'inline-block', fontSize: '11px', fontWeight: 700,
+              fontFamily: "'JetBrains Mono', monospace",
+              padding: '2px 8px', borderRadius: '3px',
+              backgroundColor: `${otxColor}18`, border: `1px solid ${otxColor}55`, color: otxColor,
+              marginBottom: '3px', cursor: 'pointer'
+            }}>{pulseCount} pulse{pulseCount !== 1 ? 's' : ''} ↗</span>
         </div>
         {adversaries.length > 0 && (
           <div style={{ fontSize: '11px', color: '#ff7b7b', fontWeight: 600, marginBottom: '2px' }}>
@@ -228,13 +258,16 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
     sections.push(
       <div key="urlscan" style={{ minWidth: '100px' }}>
         <SectionLabel>URLScan.io</SectionLabel>
-        <span style={{
-          display: 'inline-block', fontSize: '11px', fontWeight: 700,
-          fontFamily: "'JetBrains Mono', monospace",
-          padding: '2px 8px', borderRadius: '3px',
-          backgroundColor: `${usColor}18`, border: `1px solid ${usColor}55`, color: usColor,
-          marginBottom: '3px'
-        }}>{usVerdict?.toUpperCase() || 'UNRATED'}</span>
+        <span
+          onClick={e => openExternal(buildURLScanLink(ioc), e)}
+          title="Open in URLScan.io"
+          style={{
+            display: 'inline-block', fontSize: '11px', fontWeight: 700,
+            fontFamily: "'JetBrains Mono', monospace",
+            padding: '2px 8px', borderRadius: '3px',
+            backgroundColor: `${usColor}18`, border: `1px solid ${usColor}55`, color: usColor,
+            marginBottom: '3px', cursor: 'pointer'
+          }}>{usVerdict?.toUpperCase() || 'UNRATED'} ↗</span>
         <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{totalScans} scan{totalScans !== 1 ? 's' : ''}</div>
         {usScore > 0 && <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>Score: {usScore}</div>}
       </div>
@@ -327,7 +360,7 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
     }
   }
 
-  // VirusTotal meta + link
+  // VirusTotal meta
   if (vt?.queried && !vt?.error) {
     sections.push(
       <div key="vt-meta" style={{ minWidth: '100px' }}>
@@ -338,20 +371,19 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
           </div>
         )}
         {vtLink && (
-          <button
-            onClick={handleCopyVT}
+          <span
+            onClick={e => openExternal(vtLink, e)}
+            title="Open in VirusTotal"
             style={{
-              background: 'none',
-              border: `1px solid ${copied ? 'rgba(57,211,83,0.4)' : 'var(--border)'}`,
-              borderRadius: '3px', padding: '2px 8px',
               fontSize: '10px', cursor: 'pointer',
-              color: copied ? 'var(--accent-teal)' : 'var(--text-secondary)',
+              color: 'var(--text-secondary)',
               fontFamily: "'JetBrains Mono', monospace",
-              transition: 'all 0.15s'
+              textDecoration: 'underline',
+              textDecorationStyle: 'dotted', textUnderlineOffset: '2px'
             }}
           >
-            {copied ? '✓ Copied' : 'Copy VT link'}
-          </button>
+            Open in VT ↗
+          </span>
         )}
       </div>
     );
@@ -732,12 +764,20 @@ export default function EnrichmentTable({ results, loading, pendingCount, thresh
                   <IOCTypeChip type={ioc.type} />
                 </td>
 
-                {/* VT Score */}
+                {/* VT Score — clickable */}
                 <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                   {vt?.queried ? (
                     vt.error
                       ? <span style={{ color: '#ff7b7b', fontSize: '11px' }}>ERR</span>
-                      : <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: vtColor, fontWeight: 600 }}>
+                      : <span
+                          onClick={e => { const link = buildVTLink(ioc); if (link) openExternal(link, e); }}
+                          title="Open in VirusTotal"
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace", fontSize: '12px',
+                            color: vtColor, fontWeight: 600,
+                            cursor: 'pointer', textDecoration: 'underline',
+                            textDecorationStyle: 'dotted', textUnderlineOffset: '2px'
+                          }}>
                           {malicious}/{total}
                         </span>
                   ) : (
@@ -745,11 +785,22 @@ export default function EnrichmentTable({ results, loading, pendingCount, thresh
                   )}
                 </td>
 
-                {/* Abuse % */}
+                {/* Abuse % — clickable for IPs */}
                 <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                   {abuse?.queried ? (
                     abuseScore !== null && abuseScore !== undefined
-                      ? <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: abuseColor, fontWeight: 600 }}>{abuseScore}</span>
+                      ? <span
+                          onClick={e => { if (ioc.type === 'ipv4') openExternal(buildAbuseLink(ioc.value), e); }}
+                          title={ioc.type === 'ipv4' ? 'Open in AbuseIPDB' : undefined}
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace", fontSize: '12px',
+                            color: abuseColor, fontWeight: 600,
+                            cursor: ioc.type === 'ipv4' ? 'pointer' : 'default',
+                            textDecoration: ioc.type === 'ipv4' ? 'underline' : 'none',
+                            textDecorationStyle: 'dotted', textUnderlineOffset: '2px'
+                          }}>
+                          {abuseScore}
+                        </span>
                       : <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>—</span>
                   ) : (
                     <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>N/A</span>
