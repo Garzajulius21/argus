@@ -9,7 +9,7 @@
 
 ## Overview
 
-ARGUS is a local IOC (Indicator of Compromise) enrichment engine built for SOC analysts. Paste or import a raw blob of text containing hashes, IP addresses, domains, or URLs — ARGUS automatically detects each IOC type, fans out to VirusTotal, AbuseIPDB, MalwareBazaar, URLScan.io, GreyNoise, and ip-api in parallel, and renders a live enrichment table with verdicts and geolocation context.
+ARGUS is a local IOC (Indicator of Compromise) enrichment engine built for SOC analysts. Paste or import a raw blob of text containing hashes, IP addresses, domains, or URLs — ARGUS automatically detects each IOC type, fans out to VirusTotal, AbuseIPDB, MalwareBazaar, URLScan.io, GreyNoise, AlienVault OTX, and ip-api in parallel, and renders a live enrichment table with verdicts, geolocation, and threat intelligence context.
 
 Designed to run locally. API keys never leave the backend process. Nothing is sent to the cloud except the IOC values themselves when querying enrichment APIs.
 
@@ -17,21 +17,26 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 
 ## What It Does
 
-1. **Paste anything** — mixed hashes, IPs, domains, URLs in any format. Defanged IOCs (`hxxp://`, `[.]`) handled automatically.
+1. **Paste anything** — mixed hashes, IPs, domains, URLs in any format. Defanged IOCs (`hxxp://`, `[.]`, `[dot]`) handled automatically. Duplicates silently removed before enrichment.
 2. **Bulk file import** — drag and drop a `.txt`, `.csv`, or `.log` file onto the input area, or use the Upload File button. IOCs are extracted and merged with anything already typed. A badge shows the filename and IOC count.
 3. **Auto-detection** — IOC types identified in real time as you type with color-coded badges.
 4. **Parallel enrichment** — VirusTotal (rate-limited to 4/min), MalwareBazaar, AbuseIPDB, URLScan.io, GreyNoise, AlienVault OTX, and ip-api all queried simultaneously.
-5. **Live results table** — rows populate as each API responds, no waiting for everything to finish.
-6. **Geolocation** — IPv4 addresses automatically enriched with country (flag + name), ASN number, and organisation via ip-api.com (free, no key required). Geo column appears only when the batch contains IPs.
-7. **URLScan.io sandbox** — URLs, domains, and IPs checked against URLScan.io's scan history. Returns MALICIOUS / SUSPICIOUS / UNRATED verdict and scan count. Works without an API key; optional key increases rate limits.
-8. **GreyNoise classification** — IPv4 addresses checked against GreyNoise to identify internet background noise (scanners, crawlers) vs. targeted activity. NOISE / RIOT / MALICIOUS badges. Requires a free GreyNoise API key.
-9. **AlienVault OTX** — all IOC types checked against OTX threat intelligence pulses. Shows pulse count, adversary attribution, malware families, and MITRE ATT&CK IDs. 3+ pulses escalates verdict to MALICIOUS. Requires a free OTX API key.
-10. **Verdicts** — each IOC gets CLEAN, SUSPICIOUS, or MALICIOUS based on combined signal from all sources (VT, AbuseIPDB, MalwareBazaar, URLScan, GreyNoise).
-11. **Configurable thresholds** — click ⚙ in the header to open the settings drawer. Adjust VT detection count and AbuseIPDB score thresholds for SUSPICIOUS and MALICIOUS independently. Verdicts on existing results update instantly — no need to re-run enrichment. Saved to localStorage.
-12. **Search history** — last 15 searches stored automatically in the browser. Each entry shows verdict summary and IOC preview. Click any entry to reload instantly.
-13. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes (requires Anthropic API key).
-14. **Pivot search** — each expanded row shows a contextual "Pivot" button when a related IOC can be derived: URL → extracts the hostname domain, domain → builds a URL for URLScan coverage, IP → extracts associated domain from AbuseIPDB or VT name, hash → extracts domain/URL from VT name. One click pre-fills the input for immediate follow-on enrichment.
-15. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
+5. **Live results table** — rows populate as each API responds, no waiting for everything to finish. MALICIOUS rows auto-expand immediately.
+6. **Geolocation** — IPv4 addresses automatically enriched with country (flag + name), ASN number, and organisation via ip-api.com (free, no key required).
+7. **URLScan.io sandbox** — URLs, domains, and IPs checked against URLScan.io's scan history. Returns MALICIOUS / SUSPICIOUS / UNRATED verdict and scan count. Click the verdict badge to open URLScan directly. Works without an API key; optional key increases rate limits.
+8. **GreyNoise classification** — IPv4 addresses checked against GreyNoise to identify internet background noise (scanners, crawlers) vs. targeted activity. NOISE / RIOT / MALICIOUS badges. Click badge to open GreyNoise viz. Requires a free GreyNoise API key.
+9. **AlienVault OTX** — all IOC types checked against OTX threat intelligence pulses. Shows pulse count, adversary attribution, malware families, and MITRE ATT&CK IDs. 3+ pulses → MALICIOUS verdict. Click pulse count to open OTX indicator page. Requires a free OTX API key.
+10. **WHOIS for domains** — registrar, registration year, and expiry date extracted from VirusTotal's domain response. Age color-coded: red < 1yr (phishing signal), amber < 2yr, teal established. Click "Full WHOIS ↗" to open whois.domaintools.com.
+11. **Verdicts** — each IOC gets CLEAN, SUSPICIOUS, or MALICIOUS based on combined signal from all sources (VT, AbuseIPDB, MalwareBazaar, URLScan, GreyNoise, OTX).
+12. **Configurable thresholds** — click ⚙ in the header to open the settings drawer. Adjust VT detection count and AbuseIPDB score thresholds independently. Verdicts update instantly without re-running enrichment. Saved to localStorage.
+13. **Sort and filter** — filter results by verdict (ALL / MALICIOUS / SUSPICIOUS / CLEAN). Click VT Score, Abuse %, or Verdict column headers to sort ascending/descending.
+14. **Clickable source links** — VT Score opens VirusTotal, Abuse % opens AbuseIPDB, all badges in expanded rows link directly to the source for deeper investigation.
+15. **Copy malicious IOCs** — one-click button copies all MALICIOUS IOC values to clipboard for blocklisting or escalation. Appears automatically when malicious results exist.
+16. **Pivot search** — each expanded row shows a contextual Pivot button when a related IOC can be derived (URL → domain, domain → URL, IP → associated domain, hash → VT name). One click pre-fills the input for immediate follow-on enrichment.
+17. **Search history** — last 15 searches stored automatically in the browser. Each entry shows verdict summary and IOC preview. Click any entry to reload instantly.
+18. **Persistent results** — last enrichment session survives a page refresh. Results and AI brief restored automatically. Cleared when a new analysis begins.
+19. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes. Incorporates VT, AbuseIPDB, GreyNoise, OTX adversary/campaign data. Requires Anthropic API key.
+20. **Export** — download the full enrichment report as `.md`, `.csv`, or `.json`. CSV and JSON include all enrichment sources (VT, AbuseIPDB, URLScan, GreyNoise, OTX, Geo). Copy markdown directly to clipboard.
 
 ---
 
@@ -42,7 +47,7 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 | Frontend | React 18 + Vite + Tailwind CSS |
 | Backend | Node.js + Express |
 | Security | Helmet.js, CORS, express-rate-limit |
-| Enrichment | VirusTotal v3, AbuseIPDB v2, MalwareBazaar, URLScan.io, GreyNoise, ip-api.com |
+| Enrichment | VirusTotal v3, AbuseIPDB v2, MalwareBazaar, URLScan.io, GreyNoise, AlienVault OTX, ip-api.com |
 | AI Report | Anthropic Claude API (optional) |
 | Testing | Jest (99 tests, 97% coverage) |
 
@@ -66,11 +71,12 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 ### Prerequisites
 - Node.js v18+
 - VirusTotal API key (free) — virustotal.com
-- Optional: AbuseIPDB key (free), Anthropic API key (paid ~$0.01–0.03/run)
+- Optional: AbuseIPDB key (free) — abuseipdb.com
+- Optional: GreyNoise key (free) — greynoise.io
+- Optional: URLScan.io key (free) — urlscan.io (works without one, key increases rate limit)
+- Optional: AlienVault OTX key (free) — otx.alienvault.com
+- Optional: Anthropic API key (paid ~$0.01–0.03/run) — console.anthropic.com
 - ip-api.com — no key required (free tier, 45 req/min)
-- Optional: URLScan.io key (free) — works without one, key increases rate limit
-- Optional: GreyNoise key (free) — required for GreyNoise classification
-- Optional: AlienVault OTX key (free) — otx.alienvault.com, required for OTX pulse data
 
 ### First-time install
 ```bash
@@ -82,7 +88,7 @@ cd ../frontend && npm install
 ```bash
 open -a TextEdit backend/.env
 ```
-Fill in `VIRUSTOTAL_API_KEY` and optionally `ABUSEIPDB_API_KEY`, `ANTHROPIC_API_KEY`, `URLSCAN_API_KEY`, and `GREYNOISE_API_KEY`.
+Fill in `VIRUSTOTAL_API_KEY` and optionally `ABUSEIPDB_API_KEY`, `GREYNOISE_API_KEY`, `URLSCAN_API_KEY`, `OTX_API_KEY`, and `ANTHROPIC_API_KEY`.
 
 ### Start the app
 Double-click `start-argus.command` in the project folder, then open **http://localhost:5173**.
@@ -95,6 +101,13 @@ cd backend && npm run dev
 # Terminal 2
 cd frontend && npm run dev
 ```
+
+### Syncing across machines
+The project is version-controlled on GitHub. On any machine with the repo cloned:
+```bash
+cd ~/Documents/argus && git pull
+```
+Note: `.env` is gitignored and never synced — add API keys manually on each machine.
 
 ---
 
@@ -116,12 +129,13 @@ argus/
 ├── backend/
 │   ├── lib/
 │   │   ├── iocParser.js       ← IOC detection and type classification
-│   │   ├── virustotal.js      ← VirusTotal v3 enrichment
+│   │   ├── virustotal.js      ← VirusTotal v3 enrichment + WHOIS extraction
 │   │   ├── abuseipdb.js       ← AbuseIPDB v2 enrichment
 │   │   ├── malwarebazaar.js   ← MalwareBazaar enrichment
 │   │   ├── geolocation.js     ← IP geolocation via ip-api.com (no key)
 │   │   ├── urlscan.js         ← URLScan.io sandbox verdict (optional key)
 │   │   ├── greynoise.js       ← GreyNoise IP noise classification (free key)
+│   │   ├── otx.js             ← AlienVault OTX threat intelligence (free key)
 │   │   ├── queue.js           ← VT rate-limit queue (4/min)
 │   │   └── claude.js          ← AI report generation + verdict logic
 │   ├── middleware/            ← Security headers, input validation
@@ -130,13 +144,17 @@ argus/
 ├── frontend/
 │   └── src/
 │       ├── components/
-│       │   ├── IOCInput.jsx       ← Paste + drag-and-drop file import
-│       │   ├── EnrichmentTable.jsx ← Results table with Geo column
+│       │   ├── IOCInput.jsx        ← Paste + drag-and-drop file import
+│       │   ├── EnrichmentTable.jsx ← Results table, sort, filter, expand
 │       │   ├── VerdictBadge.jsx
 │       │   ├── AnalystReport.jsx
 │       │   ├── SearchHistory.jsx
-│       │   └── ExportButton.jsx
-│       └── lib/               ← IOC parser mirror, defang utility
+│       │   ├── SettingsDrawer.jsx  ← Configurable verdict thresholds
+│       │   └── ExportButton.jsx    ← MD / CSV / JSON export
+│       └── lib/
+│           ├── iocParser.js   ← Frontend IOC parser mirror
+│           ├── defang.js      ← IOC defanging utility
+│           └── verdict.js     ← Frontend verdict logic + threshold storage
 ├── SPEC.md               ← Full technical specification and architecture
 └── start-argus.command   ← One-click startup script
 ```
