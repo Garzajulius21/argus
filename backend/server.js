@@ -1,6 +1,6 @@
 'use strict';
 
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const express = require('express');
 const { applySecurityMiddleware } = require('./middleware/security');
@@ -38,6 +38,11 @@ app.use((err, req, res, next) => {
 const server = app.listen(PORT, () => {
   if (process.env.NODE_ENV !== 'production') {
     console.log(`ARGUS backend listening on http://localhost:${PORT}`);
+    console.log(`  VT:         ${process.env.VIRUSTOTAL_API_KEY ? '✓' : '✗ missing'}`);
+    console.log(`  AbuseIPDB:  ${process.env.ABUSEIPDB_API_KEY && process.env.ABUSEIPDB_API_KEY !== 'your_abuseipdb_api_key_here' ? '✓' : '✗ not configured'}`);
+    console.log(`  GreyNoise:  ${process.env.GREYNOISE_API_KEY && process.env.GREYNOISE_API_KEY !== 'your_greynoise_api_key_here' ? '✓' : '✗ not configured'}`);
+    console.log(`  URLScan:    ${process.env.URLSCAN_API_KEY && process.env.URLSCAN_API_KEY !== 'your_urlscan_api_key_here' ? '✓' : '✗ not configured (optional)'}`);
+    console.log(`  Anthropic:  ${process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' ? '✓' : '✗ not configured (optional)'}`);
   }
 });
 
