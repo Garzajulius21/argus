@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import IOCInput from './components/IOCInput.jsx';
 import EnrichmentTable from './components/EnrichmentTable.jsx';
 import AnalystReport from './components/AnalystReport.jsx';
@@ -10,9 +10,16 @@ import { loadThresholds } from './lib/verdict.js';
 
 export default function App() {
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState(() => {
+    try {
+      const saved = localStorage.getItem('argus_last_results');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [reportText, setReportText] = useState(() => {
+    try { return localStorage.getItem('argus_last_report') || ''; } catch { return ''; }
+  });
   const [progress, setProgress] = useState({ processed: 0, total: 0, waitingMs: 0 });
-  const [reportText, setReportText] = useState('');
   const [reportStreaming, setReportStreaming] = useState(false);
   const [error, setError] = useState(null);
   const [history, setHistory] = useState(() => loadHistory());
@@ -20,6 +27,30 @@ export default function App() {
   const [thresholds, setThresholds] = useState(() => loadThresholds());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const abortRef = useRef(null);
+
+  // Persist results across page refresh — strip raw VT data to keep storage small
+  useEffect(() => {
+    if (results.length === 0) return;
+    try {
+      const slim = results.map(r => ({
+        ...r,
+        enrichment: {
+          ...r.enrichment,
+          virustotal: r.enrichment?.virustotal ? {
+            ...r.enrichment.virustotal,
+            data: r.enrichment.virustotal.data
+              ? { ...r.enrichment.virustotal.data, raw: {} }
+              : r.enrichment.virustotal.data
+          } : r.enrichment?.virustotal
+        }
+      }));
+      localStorage.setItem('argus_last_results', JSON.stringify(slim));
+    } catch {}
+  }, [results]);
+
+  useEffect(() => {
+    try { localStorage.setItem('argus_last_report', reportText); } catch {}
+  }, [reportText]);
 
   const handleReloadSearch = useCallback((iocValues) => {
     setInputValue(iocValues.join('\n'));
@@ -41,6 +72,7 @@ export default function App() {
     setReportText('');
     setReportStreaming(false);
     setError(null);
+    try { localStorage.removeItem('argus_last_results'); localStorage.removeItem('argus_last_report'); } catch {}
     setProgress({ processed: 0, total: parsedIocs.length, waitingMs: 0 });
 
     const controller = new AbortController();

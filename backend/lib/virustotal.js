@@ -49,6 +49,9 @@ function normalizeStats(stats, raw) {
     found: true,
     name: raw.meaningful_name || raw.name || raw.last_https_certificate?.subject?.CN || raw.as_owner || null,
     signature: raw.signature_info?.subject || null,
+    registrar: raw.registrar || null,
+    createdDate: raw.creation_date ? new Date(raw.creation_date * 1000).toISOString() : null,
+    expiryDate: raw.expiration_date ? new Date(raw.expiration_date * 1000).toISOString() : null,
     raw
   };
 }

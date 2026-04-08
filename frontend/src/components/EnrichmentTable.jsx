@@ -294,6 +294,39 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
     );
   }
 
+  // WHOIS (domains only, extracted from VT response)
+  if (ioc.type === 'domain' && vt?.queried && !vt?.error) {
+    const { registrar, createdDate, expiryDate } = vt.data || {};
+    if (registrar || createdDate || expiryDate) {
+      const created = createdDate ? new Date(createdDate).getFullYear() : null;
+      const expiry  = expiryDate  ? new Date(expiryDate).toLocaleDateString()  : null;
+      const ageYears = createdDate
+        ? Math.floor((Date.now() - new Date(createdDate)) / (1000 * 60 * 60 * 24 * 365))
+        : null;
+      sections.push(
+        <div key="whois" style={{ minWidth: '130px' }}>
+          <SectionLabel>WHOIS</SectionLabel>
+          {registrar  && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={registrar}>{registrar}</div>}
+          {created    && (
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+              Registered {created}
+              {ageYears !== null && (
+                <span style={{
+                  marginLeft: '6px', fontSize: '10px',
+                  color: ageYears < 1 ? '#ff7b7b' : ageYears < 2 ? 'var(--accent-amber)' : 'var(--accent-teal)',
+                  fontWeight: 600
+                }}>
+                  ({ageYears < 1 ? '< 1yr' : `${ageYears}yr`})
+                </span>
+              )}
+            </div>
+          )}
+          {expiry     && <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Expires {expiry}</div>}
+        </div>
+      );
+    }
+  }
+
   // VirusTotal meta + link
   if (vt?.queried && !vt?.error) {
     sections.push(
