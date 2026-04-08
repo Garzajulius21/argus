@@ -60,7 +60,7 @@ router.post('/', validateEnrichRequest, async (req, res) => {
 
     // Build intermediate enrichment map
     const enrichmentMap = new Map();
-    for (const { ioc, abuse, mb } of nonVtResults) {
+    for (const { ioc, abuse, mb, geo, urlscan, greynoise } of nonVtResults) {
       enrichmentMap.set(ioc.value, { ioc, abuseipdb: abuse, malwarebazaar: mb, geo, urlscan, greynoise });
     }
 
@@ -133,6 +133,7 @@ router.post('/', validateEnrichRequest, async (req, res) => {
 
     res.end();
   } catch (err) {
+    console.error('[enrich] Unhandled error:', err);
     if (!clientGone) {
       try {
         sseWrite(res, { type: 'error', message: 'Internal server error during enrichment.' });
