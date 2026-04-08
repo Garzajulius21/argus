@@ -7,6 +7,7 @@ const { parseIOCs } = require('../lib/iocParser');
 const { enrichWithVT } = require('../lib/virustotal');
 const { enrichWithAbuseIPDB } = require('../lib/abuseipdb');
 const { enrichWithMalwareBazaar } = require('../lib/malwarebazaar');
+const { enrichWithGeo } = require('../lib/geolocation');
 const { queueVTRequests } = require('../lib/queue');
 const { generateReport, computeVerdict } = require('../lib/claude');
 const { validateEnrichRequest } = require('../middleware/validate');
@@ -44,18 +45,19 @@ router.post('/', validateEnrichRequest, async (req, res) => {
     // Run AbuseIPDB and MalwareBazaar in parallel (no rate limit)
     const nonVtResults = await Promise.all(
       iocs.map(async (ioc) => {
-        const [abuse, mb] = await Promise.all([
+        const [abuse, mb, geo] = await Promise.all([
           enrichWithAbuseIPDB(ioc),
-          enrichWithMalwareBazaar(ioc)
+          enrichWithMalwareBazaar(ioc),
+          enrichWithGeo(ioc)
         ]);
-        return { ioc, abuse, mb };
+        return { ioc, abuse, mb, geo };
       })
     );
 
     // Build intermediate enrichment map
     const enrichmentMap = new Map();
     for (const { ioc, abuse, mb } of nonVtResults) {
-      enrichmentMap.set(ioc.value, { ioc, abuseipdb: abuse, malwarebazaar: mb });
+      enrichmentMap.set(ioc.value, { ioc, abuseipdb: abuse, malwarebazaar: mb, geo });
     }
 
     // Run VT with rate limit queue
@@ -86,7 +88,8 @@ router.post('/', validateEnrichRequest, async (req, res) => {
       const enrichment = {
         virustotal: vtResult,
         abuseipdb: stored ? stored.abuseipdb : null,
-        malwarebazaar: stored ? stored.malwarebazaar : null
+        malwarebazaar: stored ? stored.malwarebazaar : null,
+        geo: stored ? stored.geo : null
       };
 
       // Compute per-IOC verdict

@@ -3,15 +3,63 @@ import IOCTypeChip from './IOCTypeChip.jsx';
 import VerdictBadge from './VerdictBadge.jsx';
 import { defang } from '../lib/defang.js';
 
-function SkeletonRow() {
+function SkeletonRow({ cols = 6 }) {
   return (
     <tr style={{ borderBottom: '1px solid var(--border)' }}>
-      {[1, 2, 3, 4, 5, 6].map(i => (
+      {Array.from({ length: cols }).map((_, i) => (
         <td key={i} style={{ padding: '10px 12px' }}>
-          <div className="skeleton" style={{ height: '14px', width: i === 1 ? '80%' : '60%' }} />
+          <div className="skeleton" style={{ height: '14px', width: i === 0 ? '80%' : '60%' }} />
         </td>
       ))}
     </tr>
+  );
+}
+
+const countryFlag = (code) => {
+  if (!code || code.length !== 2) return '';
+  return code.toUpperCase().split('').map(c => String.fromCodePoint(127397 + c.charCodeAt(0))).join('');
+};
+
+function GeoCell({ geo }) {
+  if (!geo || !geo.queried) {
+    return <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>N/A</span>;
+  }
+  if (geo.error || !geo.data?.found) {
+    return <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>—</span>;
+  }
+  const { country, countryCode, as: asn, asName } = geo.data;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '120px' }}>
+      {country && (
+        <span style={{ fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+          {countryFlag(countryCode)} {country}
+        </span>
+      )}
+      {asn && (
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '10px',
+          color: 'var(--accent-teal)',
+          whiteSpace: 'nowrap'
+        }}>
+          {asn}
+        </span>
+      )}
+      {asName && (
+        <span style={{
+          fontSize: '10px',
+          color: 'var(--text-secondary)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          maxWidth: '160px'
+        }}
+        title={asName}
+        >
+          {asName}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -249,6 +297,7 @@ function buildVTLink(ioc) {
 export default function EnrichmentTable({ results, loading, pendingCount }) {
   const [filter, setFilter] = useState('ALL');
   const hasResults = results && results.length > 0;
+  const showGeo = results.some(r => r.ioc?.type === 'ipv4');
 
   if (!hasResults && !loading) return null;
 
@@ -312,7 +361,7 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
         }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)' }}>
-              {['IOC', 'Type', 'VT Score', 'Abuse %', 'Tags / Status', 'Verdict'].map(h => (
+              {['IOC', 'Type', 'VT Score', 'Abuse %', ...(showGeo ? ['Geo'] : []), 'Tags / Status', 'Verdict'].map(h => (
                 <th key={h} style={{
                   padding: '8px 12px',
                   textAlign: 'left',
@@ -335,6 +384,7 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
               const vt = enrichment?.virustotal;
               const abuse = enrichment?.abuseipdb;
               const mb = enrichment?.malwarebazaar;
+              const geo = enrichment?.geo;
 
               const allTags = [
                 ...(vt?.data?.tags || []),
@@ -343,6 +393,7 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
               ];
 
               const vtLink = buildVTLink(ioc);
+              const colSpan = showGeo ? 7 : 6;
 
               return (
                 <tr key={i} style={{
@@ -394,6 +445,12 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
                     )}
                   </td>
 
+                  {showGeo && (
+                    <td style={{ padding: '10px 12px' }}>
+                      <GeoCell geo={geo} />
+                    </td>
+                  )}
+
                   <td style={{ padding: '10px 12px' }}>
                     <TagsCell tags={allTags} />
                   </td>
@@ -406,13 +463,13 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
             })}
 
             {loading && Array.from({ length: Math.min(pendingCount || 3, 5) }).map((_, i) => (
-              <SkeletonRow key={`skel-${i}`} />
+              <SkeletonRow key={`skel-${i}`} cols={showGeo ? 7 : 6} />
             ))}
 
             {/* Empty state when filter has no matches */}
             {!loading && filteredResults.length === 0 && results.length > 0 && (
               <tr>
-                <td colSpan={6} style={{
+                <td colSpan={showGeo ? 7 : 6} style={{
                   padding: '24px',
                   textAlign: 'center',
                   color: 'var(--text-secondary)',

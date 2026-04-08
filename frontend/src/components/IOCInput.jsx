@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { parseIOCs, MAX_IOCS } from '../lib/iocParser.js';
 import IOCTypeChip from './IOCTypeChip.jsx';
 import { defang } from '../lib/defang.js';
@@ -6,6 +6,9 @@ import { defang } from '../lib/defang.js';
 export default function IOCInput({ onAnalyze, loading, injectedValue, onInjectedValueConsumed }) {
   const [text, setText] = useState('');
   const [parsedIocs, setParsedIocs] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileInfo, setFileInfo] = useState(null); // { name, count }
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (injectedValue) {
@@ -35,7 +38,50 @@ export default function IOCInput({ onAnalyze, loading, injectedValue, onInjected
   const handleClear = useCallback(() => {
     setText('');
     setParsedIocs([]);
+    setFileInfo(null);
   }, []);
+
+  const handleFile = useCallback((file) => {
+    if (!file) return;
+    const allowed = ['text/plain', 'text/csv', 'application/csv', ''];
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['txt', 'csv', 'log', 'md'].includes(ext) && !allowed.includes(file.type)) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const fileText = e.target.result || '';
+      setText(prev => {
+        const merged = prev.trim() ? prev.trim() + '\n' + fileText : fileText;
+        const parsed = parseIOCs(merged);
+        setParsedIocs(parsed);
+        setFileInfo({ name: file.name, count: parseIOCs(fileText).length });
+        return merged;
+      });
+    };
+    reader.readAsText(file);
+  }, []);
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    handleFile(file);
+  }, [handleFile]);
+
+  const handleFileInputChange = useCallback((e) => {
+    handleFile(e.target.files?.[0]);
+    e.target.value = '';
+  }, [handleFile]);
 
   const iocCount = parsedIocs.length;
   const atLimit = iocCount >= MAX_IOCS;
@@ -73,32 +119,113 @@ export default function IOCInput({ onAnalyze, loading, injectedValue, onInjected
         )}
       </div>
 
-      {/* Textarea */}
-      <textarea
-        value={text}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.csv,.log,.md"
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+      />
+
+      {/* File badge */}
+      {fileInfo && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '5px 10px',
+          backgroundColor: 'rgba(56,189,248,0.08)',
+          border: '1px solid rgba(56,189,248,0.25)',
+          borderRadius: '5px',
+          fontSize: '12px',
+          color: 'var(--accent-blue)'
+        }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>📄</span>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <strong>{fileInfo.count}</strong> IOCs from <em>{fileInfo.name}</em>
+          </span>
+          <button
+            onClick={() => setFileInfo(null)}
+            style={{
+              background: 'none', border: 'none',
+              color: 'var(--text-secondary)', cursor: 'pointer',
+              fontSize: '14px', padding: '0 2px', lineHeight: 1
+            }}
+            title="Dismiss"
+          >×</button>
+        </div>
+      )}
+
+      {/* Textarea with drag-and-drop zone */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={{ position: 'relative' }}
+      >
+        <textarea
+          value={text}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
+          placeholder={`Paste IOCs here — hashes, IPs, domains, URLs.\nOne per line, or comma/space separated.\nDefanged formats supported (hxxp://, [.]).\n\nDrag & drop a .txt or .csv file, or use Upload File.\nCtrl+Enter to analyze.`}
+          style={{
+            width: '100%',
+            height: '200px',
+            padding: '12px',
+            backgroundColor: isDragging ? 'rgba(56,189,248,0.06)' : 'var(--bg-elevated)',
+            border: `1px solid ${isDragging ? 'var(--accent-blue)' : 'var(--border)'}`,
+            borderRadius: '6px',
+            color: 'var(--text-primary)',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '13px',
+            lineHeight: '1.6',
+            resize: 'vertical',
+            outline: 'none',
+            transition: 'border-color 0.2s, background-color 0.2s',
+            opacity: loading ? 0.6 : 1,
+            boxSizing: 'border-box'
+          }}
+          onFocus={e => { if (!isDragging) e.target.style.borderColor = 'var(--accent-blue)'; }}
+          onBlur={e => { if (!isDragging) e.target.style.borderColor = 'var(--border)'; }}
+        />
+        {isDragging && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+            borderRadius: '6px',
+            backgroundColor: 'rgba(56,189,248,0.06)'
+          }}>
+            <span style={{ fontSize: '13px', color: 'var(--accent-blue)', fontWeight: 600 }}>
+              Drop file to import IOCs
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Upload file button */}
+      <button
+        onClick={() => fileInputRef.current?.click()}
         disabled={loading}
-        placeholder={`Paste IOCs here — hashes, IPs, domains, URLs.\nOne per line, or comma/space separated.\nDefanged formats supported (hxxp://, [.]).\n\nCtrl+Enter to analyze.`}
         style={{
           width: '100%',
-          height: '200px',
-          padding: '12px',
-          backgroundColor: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
+          padding: '7px 12px',
+          backgroundColor: 'transparent',
+          border: '1px dashed var(--border)',
           borderRadius: '6px',
-          color: 'var(--text-primary)',
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '13px',
-          lineHeight: '1.6',
-          resize: 'vertical',
-          outline: 'none',
-          transition: 'border-color 0.2s',
-          opacity: loading ? 0.6 : 1
+          color: 'var(--text-secondary)',
+          fontSize: '12px',
+          fontFamily: "'IBM Plex Sans', sans-serif",
+          cursor: loading ? 'not-allowed' : 'pointer',
+          transition: 'border-color 0.2s, color 0.2s'
         }}
-        onFocus={e => e.target.style.borderColor = 'var(--accent-blue)'}
-        onBlur={e => e.target.style.borderColor = 'var(--border)'}
-      />
+        onMouseEnter={e => { e.target.style.borderColor = 'var(--accent-blue)'; e.target.style.color = 'var(--accent-blue)'; }}
+        onMouseLeave={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--text-secondary)'; }}
+      >
+        Upload file (.txt · .csv · .log)
+      </button>
 
       {/* IOC chip preview */}
       {parsedIocs.length > 0 && (
