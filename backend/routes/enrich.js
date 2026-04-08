@@ -8,6 +8,8 @@ const { enrichWithVT } = require('../lib/virustotal');
 const { enrichWithAbuseIPDB } = require('../lib/abuseipdb');
 const { enrichWithMalwareBazaar } = require('../lib/malwarebazaar');
 const { enrichWithGeo } = require('../lib/geolocation');
+const { enrichWithURLScan } = require('../lib/urlscan');
+const { enrichWithGreyNoise } = require('../lib/greynoise');
 const { queueVTRequests } = require('../lib/queue');
 const { generateReport, computeVerdict } = require('../lib/claude');
 const { validateEnrichRequest } = require('../middleware/validate');
@@ -45,19 +47,21 @@ router.post('/', validateEnrichRequest, async (req, res) => {
     // Run AbuseIPDB and MalwareBazaar in parallel (no rate limit)
     const nonVtResults = await Promise.all(
       iocs.map(async (ioc) => {
-        const [abuse, mb, geo] = await Promise.all([
+        const [abuse, mb, geo, urlscan, greynoise] = await Promise.all([
           enrichWithAbuseIPDB(ioc),
           enrichWithMalwareBazaar(ioc),
-          enrichWithGeo(ioc)
+          enrichWithGeo(ioc),
+          enrichWithURLScan(ioc),
+          enrichWithGreyNoise(ioc)
         ]);
-        return { ioc, abuse, mb, geo };
+        return { ioc, abuse, mb, geo, urlscan, greynoise };
       })
     );
 
     // Build intermediate enrichment map
     const enrichmentMap = new Map();
     for (const { ioc, abuse, mb } of nonVtResults) {
-      enrichmentMap.set(ioc.value, { ioc, abuseipdb: abuse, malwarebazaar: mb, geo });
+      enrichmentMap.set(ioc.value, { ioc, abuseipdb: abuse, malwarebazaar: mb, geo, urlscan, greynoise });
     }
 
     // Run VT with rate limit queue
@@ -89,7 +93,9 @@ router.post('/', validateEnrichRequest, async (req, res) => {
         virustotal: vtResult,
         abuseipdb: stored ? stored.abuseipdb : null,
         malwarebazaar: stored ? stored.malwarebazaar : null,
-        geo: stored ? stored.geo : null
+        geo: stored ? stored.geo : null,
+        urlscan: stored ? stored.urlscan : null,
+        greynoise: stored ? stored.greynoise : null
       };
 
       // Compute per-IOC verdict

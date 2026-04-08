@@ -30,18 +30,23 @@ function computeVerdict(enrichments) {
     const vt = group.virustotal;
     const abuse = group.abuseipdb;
     const mb = group.malwarebazaar;
+    const us = group.urlscan;
+    const gn = group.greynoise;
 
     if (
       (vt && vt.data && vt.data.malicious > 2) ||
       (abuse && abuse.data && abuse.data.abuseScore >= 75) ||
-      (mb && mb.data && mb.data.found === true)
+      (mb && mb.data && mb.data.found === true) ||
+      (us && us.data && us.data.verdict === 'malicious') ||
+      (gn && gn.data && gn.data.classification === 'malicious')
     ) {
       return 'MALICIOUS';
     }
     if (
       verdict !== 'MALICIOUS' &&
       ((vt && vt.data && vt.data.malicious >= 1 && vt.data.malicious <= 2) ||
-        (abuse && abuse.data && abuse.data.abuseScore >= 26 && abuse.data.abuseScore < 75))
+        (abuse && abuse.data && abuse.data.abuseScore >= 26 && abuse.data.abuseScore < 75) ||
+        (us && us.data && us.data.verdict === 'suspicious'))
     ) {
       verdict = 'SUSPICIOUS';
     }

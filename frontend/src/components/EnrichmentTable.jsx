@@ -168,6 +168,65 @@ function TagsCell({ tags }) {
   );
 }
 
+function SandboxCell({ urlscan, greynoise, iocType }) {
+  const hasURLScan = urlscan?.queried && urlscan?.data?.found;
+  const hasGN = greynoise?.queried && greynoise?.data?.found;
+
+  if (!hasURLScan && !hasGN) {
+    return <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>—</span>;
+  }
+
+  const usVerdict = urlscan?.data?.verdict;
+  const usColor = usVerdict === 'malicious' ? '#ff7b7b' : usVerdict === 'suspicious' ? 'var(--accent-amber)' : 'var(--accent-teal)';
+
+  const gnClass = greynoise?.data?.classification;
+  const gnNoise = greynoise?.data?.noise;
+  const gnRiot = greynoise?.data?.riot;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      {hasURLScan && (
+        <span style={{
+          fontSize: '10px',
+          fontWeight: 700,
+          fontFamily: "'JetBrains Mono', monospace",
+          padding: '1px 5px',
+          borderRadius: '3px',
+          backgroundColor: `${usColor}18`,
+          border: `1px solid ${usColor}55`,
+          color: usColor,
+          whiteSpace: 'nowrap'
+        }}>
+          US: {usVerdict?.toUpperCase() || 'OK'}
+        </span>
+      )}
+      {hasGN && (
+        <span style={{
+          fontSize: '10px',
+          fontWeight: 700,
+          fontFamily: "'JetBrains Mono', monospace",
+          padding: '1px 5px',
+          borderRadius: '3px',
+          backgroundColor: gnClass === 'malicious'
+            ? 'rgba(255,123,123,0.1)'
+            : gnRiot
+            ? 'rgba(57,211,83,0.1)'
+            : gnNoise
+            ? 'rgba(188,140,255,0.1)'
+            : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${gnClass === 'malicious' ? 'rgba(255,123,123,0.4)' : gnRiot ? 'rgba(57,211,83,0.3)' : 'rgba(188,140,255,0.3)'}`,
+          color: gnClass === 'malicious' ? '#ff7b7b' : gnRiot ? 'var(--accent-teal)' : 'var(--accent-purple)',
+          whiteSpace: 'nowrap'
+        }}
+        title={greynoise?.data?.name || ''}
+        >
+          GN: {gnClass ? gnClass.toUpperCase() : gnRiot ? 'RIOT' : gnNoise ? 'NOISE' : 'OK'}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function VerdictSummaryBar({ results }) {
   const counts = results.reduce((acc, r) => {
     const v = (r.verdict || 'CLEAN').toUpperCase();
@@ -298,6 +357,8 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
   const [filter, setFilter] = useState('ALL');
   const hasResults = results && results.length > 0;
   const showGeo = results.some(r => r.ioc?.type === 'ipv4');
+  const showSandbox = results.some(r => ['ipv4', 'domain', 'url'].includes(r.ioc?.type));
+  const colCount = 6 + (showGeo ? 1 : 0) + (showSandbox ? 1 : 0);
 
   if (!hasResults && !loading) return null;
 
@@ -361,7 +422,7 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
         }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)' }}>
-              {['IOC', 'Type', 'VT Score', 'Abuse %', ...(showGeo ? ['Geo'] : []), 'Tags / Status', 'Verdict'].map(h => (
+              {['IOC', 'Type', 'VT Score', 'Abuse %', ...(showGeo ? ['Geo'] : []), ...(showSandbox ? ['URLScan / GN'] : []), 'Tags / Status', 'Verdict'].map(h => (
                 <th key={h} style={{
                   padding: '8px 12px',
                   textAlign: 'left',
@@ -385,6 +446,8 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
               const abuse = enrichment?.abuseipdb;
               const mb = enrichment?.malwarebazaar;
               const geo = enrichment?.geo;
+              const urlscan = enrichment?.urlscan;
+              const greynoise = enrichment?.greynoise;
 
               const allTags = [
                 ...(vt?.data?.tags || []),
@@ -393,7 +456,6 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
               ];
 
               const vtLink = buildVTLink(ioc);
-              const colSpan = showGeo ? 7 : 6;
 
               return (
                 <tr key={i} style={{
@@ -451,6 +513,12 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
                     </td>
                   )}
 
+                  {showSandbox && (
+                    <td style={{ padding: '10px 12px' }}>
+                      <SandboxCell urlscan={urlscan} greynoise={greynoise} iocType={ioc.type} />
+                    </td>
+                  )}
+
                   <td style={{ padding: '10px 12px' }}>
                     <TagsCell tags={allTags} />
                   </td>
@@ -463,13 +531,13 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
             })}
 
             {loading && Array.from({ length: Math.min(pendingCount || 3, 5) }).map((_, i) => (
-              <SkeletonRow key={`skel-${i}`} cols={showGeo ? 7 : 6} />
+              <SkeletonRow key={`skel-${i}`} cols={colCount} />
             ))}
 
             {/* Empty state when filter has no matches */}
             {!loading && filteredResults.length === 0 && results.length > 0 && (
               <tr>
-                <td colSpan={showGeo ? 7 : 6} style={{
+                <td colSpan={colCount} style={{
                   padding: '24px',
                   textAlign: 'center',
                   color: 'var(--text-secondary)',
