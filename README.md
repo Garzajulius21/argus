@@ -26,9 +26,10 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 7. **URLScan.io sandbox** — URLs, domains, and IPs checked against URLScan.io's scan history. Returns MALICIOUS / SUSPICIOUS / UNRATED verdict and scan count. Works without an API key; optional key increases rate limits.
 8. **GreyNoise classification** — IPv4 addresses checked against GreyNoise to identify internet background noise (scanners, crawlers) vs. targeted activity. NOISE / RIOT / MALICIOUS badges. Requires a free GreyNoise API key.
 9. **Verdicts** — each IOC gets CLEAN, SUSPICIOUS, or MALICIOUS based on combined signal from all sources (VT, AbuseIPDB, MalwareBazaar, URLScan, GreyNoise).
-10. **Search history** — last 15 searches stored automatically in the browser. Each entry shows verdict summary and IOC preview. Click any entry to reload instantly.
-11. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes (requires Anthropic API key).
-12. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
+10. **Configurable thresholds** — click ⚙ in the header to open the settings drawer. Adjust VT detection count and AbuseIPDB score thresholds for SUSPICIOUS and MALICIOUS independently. Verdicts on existing results update instantly — no need to re-run enrichment. Saved to localStorage.
+11. **Search history** — last 15 searches stored automatically in the browser. Each entry shows verdict summary and IOC preview. Click any entry to reload instantly.
+12. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes (requires Anthropic API key).
+13. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
 
 ---
 

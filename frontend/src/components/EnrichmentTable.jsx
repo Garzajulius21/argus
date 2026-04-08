@@ -2,6 +2,7 @@ import { useState } from 'react';
 import IOCTypeChip from './IOCTypeChip.jsx';
 import VerdictBadge from './VerdictBadge.jsx';
 import { defang } from '../lib/defang.js';
+import { computeVerdict, DEFAULT_THRESHOLDS } from '../lib/verdict.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -330,7 +331,7 @@ function FilterBar({ active, onChange, counts }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function EnrichmentTable({ results, loading, pendingCount }) {
+export default function EnrichmentTable({ results, loading, pendingCount, thresholds = DEFAULT_THRESHOLDS }) {
   const [filter, setFilter] = useState('ALL');
   const [expandedRows, setExpandedRows] = useState(new Set());
 
@@ -338,15 +339,22 @@ export default function EnrichmentTable({ results, loading, pendingCount }) {
 
   if (!hasResults && !loading) return null;
 
-  const verdictCounts = results.reduce((acc, r) => {
+  // Re-compute verdicts using current thresholds so they update instantly
+  // when settings change, without needing to re-run enrichment.
+  const resultsWithVerdict = results.map(r => ({
+    ...r,
+    verdict: computeVerdict(r.enrichment, thresholds)
+  }));
+
+  const verdictCounts = resultsWithVerdict.reduce((acc, r) => {
     const v = (r.verdict || 'CLEAN').toUpperCase();
     acc[v] = (acc[v] || 0) + 1;
     return acc;
   }, {});
 
   const filteredResults = filter === 'ALL'
-    ? results
-    : results.filter(r => (r.verdict || 'CLEAN').toUpperCase() === filter);
+    ? resultsWithVerdict
+    : resultsWithVerdict.filter(r => (r.verdict || 'CLEAN').toUpperCase() === filter);
 
   const toggleRow = (idx) => {
     setExpandedRows(prev => {

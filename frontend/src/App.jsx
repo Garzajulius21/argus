@@ -5,6 +5,8 @@ import AnalystReport from './components/AnalystReport.jsx';
 import ProgressBar from './components/ProgressBar.jsx';
 import ExportButton from './components/ExportButton.jsx';
 import SearchHistory, { loadHistory, saveToHistory } from './components/SearchHistory.jsx';
+import SettingsDrawer from './components/SettingsDrawer.jsx';
+import { loadThresholds } from './lib/verdict.js';
 
 export default function App() {
   const [loading, setLoading] = useState(false);
@@ -15,6 +17,8 @@ export default function App() {
   const [error, setError] = useState(null);
   const [history, setHistory] = useState(() => loadHistory());
   const [inputValue, setInputValue] = useState('');
+  const [thresholds, setThresholds] = useState(() => loadThresholds());
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const abortRef = useRef(null);
 
   const handleReloadSearch = useCallback((iocValues) => {
@@ -191,10 +195,35 @@ export default function App() {
             borderRadius: '4px',
             fontFamily: "'JetBrains Mono', monospace"
           }}>
-            VT · AbuseIPDB · MalwareBazaar
+            VT · AbuseIPDB · MalwareBazaar · URLScan · GreyNoise
           </span>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="Verdict thresholds"
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: '5px',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              fontSize: '14px',
+              lineHeight: 1,
+              transition: 'border-color 0.15s, color 0.15s'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-blue)'; e.currentTarget.style.color = 'var(--accent-blue)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >⚙</button>
         </div>
       </header>
+
+      {settingsOpen && (
+        <SettingsDrawer
+          thresholds={thresholds}
+          onChange={setThresholds}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {/* Main content — two panel layout */}
       <main style={{
@@ -314,6 +343,7 @@ export default function App() {
                 results={results}
                 loading={loading}
                 pendingCount={progress.total - progress.processed}
+                thresholds={thresholds}
               />
 
               {(reportText || reportStreaming) && (
