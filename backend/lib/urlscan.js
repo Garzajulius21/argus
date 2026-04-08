@@ -32,10 +32,11 @@ async function enrichWithURLScan(ioc) {
   try {
     const response = await axios.get(`${URLSCAN_BASE}/search/`, {
       headers,
-      params: { q: query, size: 5 },
+      params: { q: query, size: 10 },
       timeout: 8000
     });
 
+    console.log(`[urlscan] query="${query}" status=${response.status} results=${response.data?.results?.length ?? 0}`);
     const results = response.data?.results || [];
     if (results.length === 0) {
       return { source: 'urlscan', queried: true, error: null, data: emptyData() };
@@ -73,6 +74,7 @@ async function enrichWithURLScan(ioc) {
     };
   } catch (err) {
     if (err.response) {
+      console.error(`[urlscan] API error: HTTP ${err.response.status}`, err.response.data);
       return {
         source: 'urlscan',
         queried: true,
@@ -80,6 +82,7 @@ async function enrichWithURLScan(ioc) {
         data: emptyData()
       };
     }
+    console.error(`[urlscan] Request failed:`, err.message);
     return {
       source: 'urlscan',
       queried: true,
