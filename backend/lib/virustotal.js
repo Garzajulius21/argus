@@ -47,7 +47,7 @@ function normalizeStats(stats, raw) {
     tags: raw.tags || [],
     country: raw.country || null,
     found: true,
-    name: raw.meaningful_name || raw.name || null,
+    name: raw.meaningful_name || raw.name || raw.last_https_certificate?.subject?.CN || raw.as_owner || null,
     signature: raw.signature_info?.subject || null,
     raw
   };

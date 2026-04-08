@@ -70,10 +70,15 @@ function buildPivotTarget(ioc, enrichment) {
       const domain = abuse?.data?.signature;
       if (domain && domain.includes('.') && !domain.includes(' '))
         return { label: domain, value: domain, description: 'domain from AbuseIPDB' };
-      // Fallback: VT name if it looks like a domain
-      const vtName = vt?.data?.name;
-      if (vtName && vtName.includes('.') && !vtName.includes(' ') && !vtName.includes('\\'))
-        return { label: vtName, value: vtName, description: 'name from VirusTotal' };
+      // VT name — could be meaningful_name, cert CN (*.example.com), or as_owner
+      const rawName = vt?.data?.name;
+      if (rawName) {
+        // Strip wildcard prefix from TLS cert CNs
+        const vtName = rawName.startsWith('*.') ? rawName.slice(2) : rawName;
+        // Accept if it looks like a domain (has dot, no spaces, not just the IP itself)
+        if (vtName !== ioc.value && vtName.includes('.') && !vtName.includes(' ') && !vtName.includes('\\'))
+          return { label: vtName, value: vtName, description: 'domain from VirusTotal' };
+      }
       return null;
     }
     case 'url': {
