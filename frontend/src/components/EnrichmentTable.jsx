@@ -101,7 +101,8 @@ function ExpandedDetail({ ioc, enrichment }) {
   // GreyNoise
   if (gn?.queried && gn?.data?.found) {
     const { classification: gnClass, noise: gnNoise, riot: gnRiot, name: gnName, lastSeen: gnSeen } = gn.data;
-    const gnLabel = gnClass ? gnClass.toUpperCase() : gnRiot ? 'RIOT' : gnNoise ? 'NOISE' : 'OK';
+    // Prioritise riot/noise labels over the generic classification string
+    const gnLabel = gnRiot ? 'RIOT' : gnNoise ? 'NOISE' : gnClass ? gnClass.toUpperCase() : 'OK';
     const gnColor = gnClass === 'malicious' ? '#ff7b7b' : gnRiot ? 'var(--accent-teal)' : 'var(--accent-purple)';
     sections.push(
       <div key="gn" style={{ minWidth: '100px' }}>
