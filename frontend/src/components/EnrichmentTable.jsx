@@ -336,7 +336,7 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
       const ageYears = createdDate
         ? Math.floor((Date.now() - new Date(createdDate)) / (1000 * 60 * 60 * 24 * 365))
         : null;
-      const whoisUrl = `https://who.is/whois/${ioc.value}`;
+      const whoisUrl = `https://whois.domaintools.com/${ioc.value}`;
       sections.push(
         <div key="whois" style={{ minWidth: '130px' }}>
           <SectionLabel>WHOIS</SectionLabel>
