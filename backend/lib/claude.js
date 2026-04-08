@@ -1,6 +1,6 @@
 'use strict';
 
-const Anthropic = require('@anthropic-ai/sdk');
+const { Anthropic } = require('@anthropic-ai/sdk');
 
 const SYSTEM_PROMPT = `You are ARGUS, an AI threat intelligence analyst embedded in a SOC enrichment engine. You receive structured enrichment data for a set of indicators of compromise (IOCs) and produce a concise, actionable intelligence brief.
 
@@ -133,12 +133,13 @@ async function generateReport(enrichedResults, sseWrite) {
     return;
   }
 
-  const client = new Anthropic.default({ apiKey });
+  console.log(`[claude] Using key: ${apiKey.slice(0, 12)}...${apiKey.slice(-4)} (length: ${apiKey.length})`);
+  const client = new Anthropic({ apiKey });
   const userPrompt = buildPrompt(enrichedResults);
 
   try {
     const stream = await client.messages.stream({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
       messages: [
