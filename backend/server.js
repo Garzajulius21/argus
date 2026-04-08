@@ -42,6 +42,7 @@ const server = app.listen(PORT, () => {
     console.log(`  AbuseIPDB:  ${process.env.ABUSEIPDB_API_KEY && process.env.ABUSEIPDB_API_KEY !== 'your_abuseipdb_api_key_here' ? '✓' : '✗ not configured'}`);
     console.log(`  GreyNoise:  ${process.env.GREYNOISE_API_KEY && process.env.GREYNOISE_API_KEY !== 'your_greynoise_api_key_here' ? '✓' : '✗ not configured'}`);
     console.log(`  URLScan:    ${process.env.URLSCAN_API_KEY && process.env.URLSCAN_API_KEY !== 'your_urlscan_api_key_here' ? '✓' : '✗ not configured (optional)'}`);
+    console.log(`  OTX:        ${process.env.OTX_API_KEY && process.env.OTX_API_KEY !== 'your_otx_api_key_here' ? '✓' : '✗ not configured (optional)'}`);
     console.log(`  Anthropic:  ${process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' ? '✓' : '✗ not configured (optional)'}`);
   }
 });

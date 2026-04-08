@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import IOCTypeChip from './IOCTypeChip.jsx';
 import VerdictBadge from './VerdictBadge.jsx';
 import { defang } from '../lib/defang.js';
@@ -120,6 +120,7 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
   const geo      = enrichment?.geo;
   const urlscan  = enrichment?.urlscan;
   const gn       = enrichment?.greynoise;
+  const otx      = enrichment?.otx;
   const vtLink   = buildVTLink(ioc);
 
 
@@ -168,6 +169,54 @@ function ExpandedDetail({ ioc, enrichment, onPivot }) {
         }}>{gnLabel}</span>
         {gnName   && <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{gnName}</div>}
         {gnSeen   && <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>Last seen {gnSeen}</div>}
+      </div>
+    );
+  }
+
+  // AlienVault OTX
+  if (otx?.queried && otx?.data?.found) {
+    const { pulseCount, adversaries, malwareFamilies, attackIds, tags: otxTags } = otx.data;
+    const otxColor = pulseCount >= 3 ? '#ff7b7b' : 'var(--accent-amber)';
+    sections.push(
+      <div key="otx" style={{ minWidth: '140px' }}>
+        <SectionLabel>AlienVault OTX</SectionLabel>
+        <div style={{ marginBottom: '4px' }}>
+          <span style={{
+            display: 'inline-block', fontSize: '11px', fontWeight: 700,
+            fontFamily: "'JetBrains Mono', monospace",
+            padding: '2px 8px', borderRadius: '3px',
+            backgroundColor: `${otxColor}18`, border: `1px solid ${otxColor}55`, color: otxColor,
+            marginBottom: '3px'
+          }}>{pulseCount} pulse{pulseCount !== 1 ? 's' : ''}</span>
+        </div>
+        {adversaries.length > 0 && (
+          <div style={{ fontSize: '11px', color: '#ff7b7b', fontWeight: 600, marginBottom: '2px' }}>
+            {adversaries.join(', ')}
+          </div>
+        )}
+        {malwareFamilies.length > 0 && (
+          <div style={{ fontSize: '11px', color: 'var(--accent-purple)', marginBottom: '2px' }}>
+            {malwareFamilies.join(', ')}
+          </div>
+        )}
+        {attackIds.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginBottom: '2px' }}>
+            {attackIds.map((id, i) => (
+              <span key={i} style={{
+                fontSize: '9px', padding: '1px 4px',
+                backgroundColor: 'rgba(240,136,62,0.1)',
+                border: '1px solid rgba(240,136,62,0.3)',
+                borderRadius: '2px', color: 'var(--accent-amber)',
+                fontFamily: "'JetBrains Mono', monospace"
+              }}>{id}</span>
+            ))}
+          </div>
+        )}
+        {otxTags.length > 0 && (
+          <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+            {otxTags.slice(0, 5).join(' · ')}
+          </div>
+        )}
       </div>
     );
   }
@@ -438,6 +487,17 @@ export default function EnrichmentTable({ results, loading, pendingCount, thresh
   const filteredResults = filter === 'ALL'
     ? resultsWithVerdict
     : resultsWithVerdict.filter(r => (r.verdict || 'CLEAN').toUpperCase() === filter);
+
+  // Auto-expand malicious rows as they arrive
+  useEffect(() => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      resultsWithVerdict.forEach((r, i) => {
+        if ((r.verdict || '').toUpperCase() === 'MALICIOUS') next.add(i);
+      });
+      return next;
+    });
+  }, [resultsWithVerdict.length]);
 
   const toggleRow = (idx) => {
     setExpandedRows(prev => {

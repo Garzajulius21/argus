@@ -28,24 +28,28 @@ export function computeVerdict(enrichment, thresholds = DEFAULT_THRESHOLDS) {
   const mb    = enrichment?.malwarebazaar;
   const us    = enrichment?.urlscan;
   const gn    = enrichment?.greynoise;
+  const otx   = enrichment?.otx;
 
   const { vtMaliciousMin, vtSuspiciousMin, abuseMaliciousMin, abuseSuspiciousMin } = thresholds;
 
   const vtDetections  = vt?.data?.malicious ?? -1;
   const abuseScore    = abuse?.data?.abuseScore ?? -1;
+  const otxPulses     = otx?.data?.pulseCount ?? 0;
 
   if (
     (vt?.queried    && vtDetections  >= vtMaliciousMin)    ||
     (abuse?.queried && abuseScore    >= abuseMaliciousMin) ||
     (mb?.data?.found === true)                             ||
     (us?.data?.verdict === 'malicious')                    ||
-    (gn?.data?.classification === 'malicious')
+    (gn?.data?.classification === 'malicious')             ||
+    (otx?.queried   && otxPulses >= 3)
   ) return 'MALICIOUS';
 
   if (
     (vt?.queried    && vtDetections  >= vtSuspiciousMin  && vtDetections  < vtMaliciousMin)  ||
     (abuse?.queried && abuseScore    >= abuseSuspiciousMin && abuseScore  < abuseMaliciousMin) ||
-    (us?.data?.verdict === 'suspicious')
+    (us?.data?.verdict === 'suspicious')                   ||
+    (otx?.queried   && otxPulses >= 1 && otxPulses < 3)
   ) return 'SUSPICIOUS';
 
   return 'CLEAN';

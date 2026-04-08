@@ -2,7 +2,7 @@
 
 ![Status](https://img.shields.io/badge/Status-Production--Ready-success)
 ![Stack](https://img.shields.io/badge/Stack-Node.js%20%2B%20React-blue)
-![APIs](https://img.shields.io/badge/APIs-VirusTotal%20%7C%20AbuseIPDB%20%7C%20MalwareBazaar%20%7C%20URLScan%20%7C%20GreyNoise%20%7C%20ip--api-red)
+![APIs](https://img.shields.io/badge/APIs-VirusTotal%20%7C%20AbuseIPDB%20%7C%20MalwareBazaar%20%7C%20URLScan%20%7C%20GreyNoise%20%7C%20OTX%20%7C%20ip--api-red)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
@@ -20,17 +20,18 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 1. **Paste anything** — mixed hashes, IPs, domains, URLs in any format. Defanged IOCs (`hxxp://`, `[.]`) handled automatically.
 2. **Bulk file import** — drag and drop a `.txt`, `.csv`, or `.log` file onto the input area, or use the Upload File button. IOCs are extracted and merged with anything already typed. A badge shows the filename and IOC count.
 3. **Auto-detection** — IOC types identified in real time as you type with color-coded badges.
-4. **Parallel enrichment** — VirusTotal (rate-limited to 4/min), MalwareBazaar, AbuseIPDB, URLScan.io, GreyNoise, and ip-api all queried simultaneously.
+4. **Parallel enrichment** — VirusTotal (rate-limited to 4/min), MalwareBazaar, AbuseIPDB, URLScan.io, GreyNoise, AlienVault OTX, and ip-api all queried simultaneously.
 5. **Live results table** — rows populate as each API responds, no waiting for everything to finish.
 6. **Geolocation** — IPv4 addresses automatically enriched with country (flag + name), ASN number, and organisation via ip-api.com (free, no key required). Geo column appears only when the batch contains IPs.
 7. **URLScan.io sandbox** — URLs, domains, and IPs checked against URLScan.io's scan history. Returns MALICIOUS / SUSPICIOUS / UNRATED verdict and scan count. Works without an API key; optional key increases rate limits.
 8. **GreyNoise classification** — IPv4 addresses checked against GreyNoise to identify internet background noise (scanners, crawlers) vs. targeted activity. NOISE / RIOT / MALICIOUS badges. Requires a free GreyNoise API key.
-9. **Verdicts** — each IOC gets CLEAN, SUSPICIOUS, or MALICIOUS based on combined signal from all sources (VT, AbuseIPDB, MalwareBazaar, URLScan, GreyNoise).
-10. **Configurable thresholds** — click ⚙ in the header to open the settings drawer. Adjust VT detection count and AbuseIPDB score thresholds for SUSPICIOUS and MALICIOUS independently. Verdicts on existing results update instantly — no need to re-run enrichment. Saved to localStorage.
-11. **Search history** — last 15 searches stored automatically in the browser. Each entry shows verdict summary and IOC preview. Click any entry to reload instantly.
-12. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes (requires Anthropic API key).
-13. **Pivot search** — each expanded row shows a contextual "Pivot" button when a related IOC can be derived: URL → extracts the hostname domain, domain → builds a URL for URLScan coverage, IP → extracts associated domain from AbuseIPDB or VT name, hash → extracts domain/URL from VT name. One click pre-fills the input for immediate follow-on enrichment.
-14. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
+9. **AlienVault OTX** — all IOC types checked against OTX threat intelligence pulses. Shows pulse count, adversary attribution, malware families, and MITRE ATT&CK IDs. 3+ pulses escalates verdict to MALICIOUS. Requires a free OTX API key.
+10. **Verdicts** — each IOC gets CLEAN, SUSPICIOUS, or MALICIOUS based on combined signal from all sources (VT, AbuseIPDB, MalwareBazaar, URLScan, GreyNoise).
+11. **Configurable thresholds** — click ⚙ in the header to open the settings drawer. Adjust VT detection count and AbuseIPDB score thresholds for SUSPICIOUS and MALICIOUS independently. Verdicts on existing results update instantly — no need to re-run enrichment. Saved to localStorage.
+12. **Search history** — last 15 searches stored automatically in the browser. Each entry shows verdict summary and IOC preview. Click any entry to reload instantly.
+13. **AI threat brief** — optional Claude-powered intelligence report streams in real time after enrichment completes (requires Anthropic API key).
+14. **Pivot search** — each expanded row shows a contextual "Pivot" button when a related IOC can be derived: URL → extracts the hostname domain, domain → builds a URL for URLScan coverage, IP → extracts associated domain from AbuseIPDB or VT name, hash → extracts domain/URL from VT name. One click pre-fills the input for immediate follow-on enrichment.
+15. **Export** — download the full enrichment report as a `.md` file for tickets or incident documentation.
 
 ---
 
@@ -69,6 +70,7 @@ Designed to run locally. API keys never leave the backend process. Nothing is se
 - ip-api.com — no key required (free tier, 45 req/min)
 - Optional: URLScan.io key (free) — works without one, key increases rate limit
 - Optional: GreyNoise key (free) — required for GreyNoise classification
+- Optional: AlienVault OTX key (free) — otx.alienvault.com, required for OTX pulse data
 
 ### First-time install
 ```bash

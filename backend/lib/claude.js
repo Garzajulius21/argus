@@ -32,13 +32,15 @@ function computeVerdict(enrichments) {
     const mb = group.malwarebazaar;
     const us = group.urlscan;
     const gn = group.greynoise;
+    const otx = group.otx;
 
     if (
       (vt && vt.data && vt.data.malicious > 2) ||
       (abuse && abuse.data && abuse.data.abuseScore >= 75) ||
       (mb && mb.data && mb.data.found === true) ||
       (us && us.data && us.data.verdict === 'malicious') ||
-      (gn && gn.data && gn.data.classification === 'malicious')
+      (gn && gn.data && gn.data.classification === 'malicious') ||
+      (otx && otx.data && otx.data.pulseCount >= 3)
     ) {
       return 'MALICIOUS';
     }
@@ -46,7 +48,8 @@ function computeVerdict(enrichments) {
       verdict !== 'MALICIOUS' &&
       ((vt && vt.data && vt.data.malicious >= 1 && vt.data.malicious <= 2) ||
         (abuse && abuse.data && abuse.data.abuseScore >= 26 && abuse.data.abuseScore < 75) ||
-        (us && us.data && us.data.verdict === 'suspicious'))
+        (us && us.data && us.data.verdict === 'suspicious') ||
+        (otx && otx.data && otx.data.pulseCount >= 1 && otx.data.pulseCount < 3))
     ) {
       verdict = 'SUSPICIOUS';
     }
@@ -100,6 +103,21 @@ function buildPrompt(enrichedResults) {
       }
     } else {
       lines.push(`- MalwareBazaar: not applicable for this IOC type`);
+    }
+
+    const otx = enrichment.otx;
+    if (otx && otx.queried) {
+      if (otx.error) {
+        lines.push(`- AlienVault OTX: ERROR — ${otx.error}`);
+      } else if (otx.data.found) {
+        lines.push(`- AlienVault OTX: ${otx.data.pulseCount} pulse${otx.data.pulseCount !== 1 ? 's' : ''}`);
+        if (otx.data.adversaries.length > 0) lines.push(`  - Adversaries: ${otx.data.adversaries.join(', ')}`);
+        if (otx.data.malwareFamilies.length > 0) lines.push(`  - Malware families: ${otx.data.malwareFamilies.join(', ')}`);
+        if (otx.data.attackIds.length > 0) lines.push(`  - MITRE ATT&CK: ${otx.data.attackIds.join(', ')}`);
+        if (otx.data.tags.length > 0) lines.push(`  - Tags: ${otx.data.tags.join(', ')}`);
+      } else {
+        lines.push(`- AlienVault OTX: no pulses found`);
+      }
     }
 
     lines.push('');
