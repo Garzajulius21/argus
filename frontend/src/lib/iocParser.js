@@ -39,7 +39,7 @@ function parseIOCs(text) {
     const normalized = normalize(raw);
     const type = detectType(normalized);
     if (!type) continue;
-    if (type === 'ipv4' && PRIVATE_IP_RE.test(normalized)) continue;
+    // Private IPs are allowed — external APIs skip them gracefully
     if (type === 'domain' && (normalized === 'localhost' || normalized.endsWith('.local'))) continue;
     const key = `${type}:${normalized.toLowerCase()}`;
     if (seen.has(key)) continue;

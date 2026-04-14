@@ -8,8 +8,15 @@ function emptyData() {
   return { noise: false, riot: false, classification: null, name: null, lastSeen: null, found: false };
 }
 
+const PRIVATE_IP_RE = /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3})$/;
+
 async function enrichWithGreyNoise(ioc) {
   if (ioc.type !== 'ipv4') {
+    return { source: 'greynoise', queried: false, error: null, data: emptyData() };
+  }
+
+  // GreyNoise only tracks internet-facing IPs — skip private ranges
+  if (PRIVATE_IP_RE.test(ioc.value)) {
     return { source: 'greynoise', queried: false, error: null, data: emptyData() };
   }
 
