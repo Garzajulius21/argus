@@ -1,9 +1,10 @@
 # ARGUS — IOC Enrichment Engine
 
-![Status](https://img.shields.io/badge/Status-Production--Ready-success)
-![Stack](https://img.shields.io/badge/Stack-Node.js%20%2B%20React-blue)
-![APIs](https://img.shields.io/badge/APIs-VirusTotal%20%7C%20AbuseIPDB%20%7C%20MalwareBazaar%20%7C%20URLScan%20%7C%20GreyNoise%20%7C%20OTX%20%7C%20ip--api-red)
-![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-Production--Ready-success?style=for-the-badge)
+![Stack](https://img.shields.io/badge/Stack-Node.js%20%2B%20React-blue?style=for-the-badge)
+![APIs](https://img.shields.io/badge/APIs-VT%20%7C%20AbuseIPDB%20%7C%20MalwareBazaar%20%7C%20URLScan%20%7C%20GreyNoise%20%7C%20OTX-red?style=for-the-badge)
+![Tests](https://img.shields.io/badge/Tests-99%20Tests%20%C2%B7%2097%25%20Coverage-brightgreen?style=for-the-badge)
+![License](https://img.shields.io/badge/License-Private-red?style=for-the-badge)
 
 ---
 
