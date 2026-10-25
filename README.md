@@ -6,6 +6,8 @@
 ![Tests](https://img.shields.io/badge/Tests-99%20Tests%20%C2%B7%2097%25%20Coverage-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Private-red?style=for-the-badge)
 
+<p align="center"><img src="docs/screenshots/argus_2_results.png" alt="ARGUS enrichment results for test indicators (EICAR hash, public DNS, example.com)" width="860"></p>
+
 ---
 
 ## Overview
